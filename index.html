@@ -71,6 +71,21 @@ header .sub{
   margin-top:2px;
   letter-spacing:4px
 }
+.key-badge{
+  display:inline-block;
+  margin-top:8px;
+  padding:4px 14px;
+  border-radius:20px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.85rem;
+  cursor:pointer;
+  transition:all .2s;
+  border:2px dashed var(--text-mid);
+  color:var(--text-mid);
+  background:transparent
+}
+.key-badge:hover{border-color:var(--amber);color:var(--amber)}
+.key-badge.has-key{border-style:solid;border-color:var(--amber);color:var(--amber);background:var(--amber-glow)}
 /* ---- tabs ---- */
 .tab-bar{
   display:flex;
@@ -494,6 +509,7 @@ footer .deco-wrap .smiley-svg{
     <svg class="header-lamp" id="lampIcon" viewBox="0 0 80 80" fill="none"></svg>
     <h1>Genie AI 创作平台</h1>
     <div class="sub">AI 图片 & 视频生成工具</div>
+    <div class="key-badge" id="keyBadge" title="点击设置 API Key">🔑 未设置 Key</div>
   </header>
 
   <!-- ===== TABS ===== -->
@@ -635,6 +651,7 @@ const galleryGrid = $('galleryGrid');
 const galleryDeco = $('galleryDeco');
 const footerSmiley= $('footerSmiley');
 const apiModal    = $('apiModal');
+const keyBadge    = $('keyBadge');
 const modalBubble = $('modalBubble');
 const apiKeyInput = $('apiKeyInput');
 const apiSaveBtn  = $('apiSaveBtn');
@@ -909,7 +926,29 @@ function addToGallery(item){
 }
 
 /* ===================== API KEY MODAL ===================== */
+function updateKeyBadge(){
+  if(apiKey){
+    keyBadge.textContent = '🔑 ' + apiKey.slice(0,8) + '...';
+    keyBadge.className = 'key-badge has-key';
+    keyBadge.title = '点击更换 API Key';
+  } else {
+    keyBadge.textContent = '🔑 未设置 Key';
+    keyBadge.className = 'key-badge';
+    keyBadge.title = '点击设置 API Key';
+  }
+}
+
+function showApiModal(){
+  apiModal.classList.add('show');
+  apiKeyInput.value = apiKey || '';
+  requestAnimationFrame(()=>{
+    applyRoughBorder(modalBubble,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#F0E8D8',fillStyle:'solid',seed:2001});
+    drawRoughButton(apiBtnSvg,{seed:2002,fill:'var(--amber)'});
+  });
+}
+
 function checkApiKey(){
+  updateKeyBadge();
   if(!apiKey){
     apiModal.classList.add('show');
     requestAnimationFrame(()=>{
@@ -927,6 +966,7 @@ function saveApiKey(){
   apiKey=key;
   localStorage.setItem('genie_api_key',key);
   apiModal.classList.remove('show');
+  updateKeyBadge();
   showToast('API Key 已保存!');
 }
 
@@ -1110,7 +1150,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   apiKeyInput.addEventListener('keydown',e=>{if(e.key==='Enter')saveApiKey()});
   imgPrompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleImageGen()}});
   vidPrompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleVideoGen()}});
-  apiModal.addEventListener('click',e=>{if(e.target===apiModal && apiKey) apiModal.classList.remove('show')});
+  keyBadge.addEventListener('click',showApiModal);
+  apiModal.addEventListener('click',e=>{if(e.target===apiModal) apiModal.classList.remove('show')});
 
   if(!apiKey) checkApiKey();
 
