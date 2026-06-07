@@ -225,6 +225,9 @@ header .sub{
   transition:border-color .2s
 }
 .sticky-card textarea:focus{border-color:var(--amber)}
+.translate-btn{position:absolute;top:8px;right:8px;padding:4px 10px;font-size:.8rem;border:1px solid var(--text-mid);border-radius:12px;background:rgba(251,247,240,0.9);color:var(--text-dark);cursor:pointer;transition:all .2s;z-index:2}
+.translate-btn:hover{border-color:var(--amber);color:var(--amber)}
+.translate-btn.loading{pointer-events:none;opacity:.6}
 /* rough button wrapper */
 .btn-wrap{
   display:flex;
@@ -560,7 +563,10 @@ footer .deco-wrap .smiley-svg{
         描述你想要的画面
         <svg class="deco-svg arrow-up" width="24" height="20" viewBox="0 0 24 20" style="position:absolute;left:auto;right:-8px;top:-18px"></svg>
       </label>
-      <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花..." rows="3"></textarea>
+      <div style="position:relative">
+        <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花..." rows="3"></textarea>
+        <button class="translate-btn" id="translateBtn" title="翻译为英文（出图质量更好）" style="display:none">🌐 译</button>
+      </div>
       <div class="style-chips" id="styleChips">
         <button class="chip" data-style="realistic photography, 8k, detailed">📷 写实摄影</button>
         <button class="chip" data-style="anime style, studio ghibli">🎨 动漫风</button>
@@ -570,6 +576,10 @@ footer .deco-wrap .smiley-svg{
         <button class="chip" data-style="pixel art, 16-bit, retro game">👾 像素风</button>
         <button class="chip" data-style="chinese ink wash painting, shan shui">🏔️ 水墨</button>
         <button class="chip" data-style="pencil sketch, hand-drawn">✏️ 素描</button>
+      </div>
+      <div class="neg-wrap" style="position:relative;z-index:1;margin-top:8px">
+        <button class="neg-toggle" id="negToggle" style="font-family:'Ma Shan Zheng',cursive;font-size:.85rem;padding:4px 14px;border:2px dashed var(--text-mid);border-radius:20px;background:transparent;color:var(--text-mid);cursor:pointer">🛑 不想看到什么</button>
+        <input type="text" id="negPrompt" placeholder="例如：blurry, low quality, ugly, watermark..." style="display:none;margin-top:6px;padding:8px 12px;font-family:'Ma Shan Zheng',cursive;font-size:.9rem;border:2px dashed var(--text-mid);border-radius:4px;background:rgba(245,232,232,0.5);color:var(--text-dark);width:100%">
       </div>
       <div class="params-row">
         <div class="param-item">
@@ -735,6 +745,9 @@ const imgModel    = $('imgModel');
 const imgSize     = $('imgSize');
 const imgCount    = $('imgCount');
 const styleChips  = $('styleChips');
+const translateBtn= $('translateBtn');
+const negToggle   = $('negToggle');
+const negPrompt   = $('negPrompt');
 const imgRefGroup = $('imgRefGroup');
 const imgRefUrl   = $('imgRefUrl');
 const imgGenBtn   = $('imgGenBtn');
@@ -1047,13 +1060,16 @@ function addToGallery(item){
 }
 
 function previewGalleryItem(item){
-  // Show in the image result area
   switchTab('image');
   setTimeout(()=>{
     imgResultContent.innerHTML = item.type==='image'
       ? `<img src="${escapeHtml(item.url)}" alt="">`
       : `<video src="${escapeHtml(item.url)}" controls autoplay loop></video>`;
-    imgResultLabel.textContent = (item.prompt||'').slice(0,60);
+    const meta = [];
+    if(item.model) meta.push(item.model.replace('agnes-image-',''));
+    if(item.size) meta.push(item.size);
+    if(item.date) meta.push(item.date);
+    imgResultLabel.innerHTML = `"${escapeHtml((item.prompt||'').slice(0,60))}"` + (meta.length ? `<br><span style="font-size:.75rem;color:var(--text-mid)">${meta.join(' · ')}</span>` : '');
     imgResultActions.innerHTML = buildResultActions(item.url, item.type);
     imgResultActions.style.display = 'flex';
     imgResult.classList.add('show');
@@ -1077,9 +1093,10 @@ async function apiFetch(path, options={}){
   return res.json();
 }
 
-async function generateImage(prompt, model, size, refUrl){
+async function generateImage(prompt, model, size, refUrl, negative){
   const m = model || 'agnes-image-2.1-flash';
-  const body = {model:m, prompt, n:1, size:size||'1024x1024'};
+  const finalPrompt = negative ? `${prompt}. Avoid: ${negative}` : prompt;
+  const body = {model:m, prompt:finalPrompt, n:1, size:size||'1024x1024'};
   if(m==='agnes-image-2.0-flash' && refUrl){
     body.extra_body = {tags:['img2img'], image:[refUrl], response_format:'url'};
   }
@@ -1177,7 +1194,7 @@ async function pollQueueTask(t){
         const url = st.remixed_from_video_id||st.video_url||st.url;
         if(url){
           updateQueueItem(taskId,{status:'completed',resultUrl:url});
-          addToGallery({type:'video',url,prompt:t.prompt});
+          addToGallery({type:'video',url,prompt:t.prompt,date:new Date().toLocaleString()});
           showToast('🎉 视频生成完成：'+t.prompt.slice(0,20)+'...');
         }
         delete queuePollers[taskId];renderQueue();return;
@@ -1298,6 +1315,7 @@ async function handleImageGen(){
 }
 
 async function doImageGen(prompt, model, size, count, refUrl){
+  const negative = negPrompt.value.trim();
   isGenerating = true;
   imgGenBtn.disabled = true;
   imgGenBtn.textContent = '生成中 ...';
@@ -1309,11 +1327,12 @@ async function doImageGen(prompt, model, size, count, refUrl){
   try{
     const urls = [];
     for(let i=0;i<count;i++){
-      const url = await generateImage(prompt, model, size, refUrl);
+      const url = await generateImage(prompt, model, size, refUrl, negative);
       if(url) urls.push(url);
     }
     if(!urls.length) throw new Error('没有返回图片');
 
+    const meta = {model, size, date:new Date().toLocaleString()};
     imgResultContent.innerHTML = urls.map(u=>
       `<img src="${escapeHtml(u)}" alt="" style="max-width:100%;border-radius:3px;margin-bottom:8px">`
     ).join('');
@@ -1321,7 +1340,7 @@ async function doImageGen(prompt, model, size, count, refUrl){
     imgResultActions.innerHTML = buildResultActionsWithRegen(urls, 'image', prompt, model, size, refUrl);
     imgResultActions.style.display = 'flex';
     imgResult.classList.add('show');
-    urls.forEach(u=>addToGallery({type:'image',url:u,prompt}));
+    urls.forEach(u=>addToGallery({type:'image',url:u,prompt,...meta}));
     lastImageParams = {prompt, model, size, refUrl};
     showToast(urls.length===1?'🎉 图片生成成功!':'🎉 '+urls.length+' 张图片生成成功!');
   }catch(e){
@@ -1443,9 +1462,41 @@ document.addEventListener('DOMContentLoaded',()=>{
   styleChips.querySelectorAll('.chip').forEach(chip=>{
     chip.addEventListener('click',()=>{
       chip.classList.toggle('active');
-      // Deselect other chips (single-select)
       styleChips.querySelectorAll('.chip').forEach(c=>{if(c!==chip)c.classList.remove('active')});
     });
+  });
+
+  // Show translate button when Chinese chars detected
+  imgPrompt.addEventListener('input',()=>{
+    const hasChinese = /[一-鿿]/.test(imgPrompt.value);
+    translateBtn.style.display = hasChinese ? 'block' : 'none';
+  });
+
+  // Translate Chinese → English via free MyMemory API
+  translateBtn.addEventListener('click',async ()=>{
+    const text = imgPrompt.value.trim();
+    if(!text) return;
+    translateBtn.classList.add('loading');
+    translateBtn.textContent = '...';
+    try{
+      const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=zh|en`);
+      const data = await res.json();
+      if(data.responseData?.translatedText){
+        imgPrompt.value = data.responseData.translatedText;
+        translateBtn.style.display = 'none';
+        showToast('✅ 已翻译为英文');
+      }
+    }catch(e){showToast('翻译失败，请手动输入英文');}
+    translateBtn.classList.remove('loading');
+    translateBtn.textContent = '🌐 译';
+  });
+
+  // Negative prompt toggle
+  negToggle.addEventListener('click',()=>{
+    const showing = negPrompt.style.display==='block';
+    negPrompt.style.display = showing ? 'none' : 'block';
+    negToggle.textContent = showing ? '🛑 不想看到什么' : '🛑 收起来';
+    if(!showing) negPrompt.focus();
   });
 
   
