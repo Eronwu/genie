@@ -1083,11 +1083,15 @@ function previewGalleryItem(item){
     if(item.size) meta.push(item.size);
     if(item.date) meta.push(item.date);
     imgResultLabel.innerHTML = `"${escapeHtml(item.prompt||'')}"` + (meta.length ? `<br><span style="font-size:.75rem;color:var(--text-mid)">${meta.join(' · ')}</span>` : '');
-    imgResultActions.innerHTML = buildResultActions(item.url, item.type);
+    imgResultActions.innerHTML = buildResultActions(item.url, item.type) + '<button class="action-btn" onclick="closePreview()" style="margin-left:auto">✕ 收起</button>';
     imgResultActions.style.display = 'flex';
     imgResult.classList.add('show');
     imgResult.scrollIntoView({behavior:'smooth',block:'center'});
   },200);
+}
+
+function closePreview(){
+  imgResult.classList.remove('show');
 }
 
 function escapeHtml(str){
