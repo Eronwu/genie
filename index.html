@@ -37,10 +37,41 @@
   }
   header h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
   header h1 span { color: var(--accent); }
+  .header-right { display:flex; align-items:center; gap:12px; }
   .badge {
     font-size:11px; background:#1a3a2a; color:var(--green);
     padding:4px 10px; border-radius:20px; font-weight:600;
   }
+
+  /* ── API Key Setup ── */
+  .setup-overlay {
+    position:fixed; top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,0.85); z-index:100;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .setup-overlay.hidden { display:none; }
+  .setup-box {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:32px; max-width:480px; width:90%;
+  }
+  .setup-box h2 { font-size:18px; margin-bottom:8px; }
+  .setup-box p { font-size:13px; color:var(--text-dim); margin-bottom:20px; line-height:1.6; }
+  .setup-box a { color:var(--accent); }
+  .setup-box input {
+    width:100%; padding:12px 16px;
+    background:#0d1117; border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-size:14px;
+    font-family: monospace; margin-bottom:16px;
+  }
+  .setup-box input:focus { outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .setup-box .btn { width:100%; }
+  .key-indicator {
+    font-size:11px; padding:4px 10px; border-radius:20px; font-weight:600;
+    cursor:pointer; transition:opacity 0.2s;
+  }
+  .key-indicator.has-key { background:#1a3a2a; color:var(--green); }
+  .key-indicator.no-key { background:#3a1a1a; color:var(--red); }
+  .key-indicator:hover { opacity:0.8; }
 
   /* ── Layout ── */
   .container { max-width:960px; margin:0 auto; padding:28px 20px 60px; }
@@ -57,10 +88,7 @@
     border-radius:9px; cursor:pointer; transition:all 0.2s;
     display:flex; align-items:center; justify-content:center; gap:7px;
   }
-  .tab.active {
-    background:#1f2937; color:var(--text);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  }
+  .tab.active { background:#1f2937; color:var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
   .tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,0.03); }
 
   /* ── Form Card ── */
@@ -72,15 +100,14 @@
     font-size:14px; font-weight:600; color:var(--text-dim);
     text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px;
   }
-  textarea, input[type="text"], input[type="url"], select {
+  textarea, input[type="text"], input[type="url"], select, input[type="password"] {
     width:100%; padding:12px 16px;
     background:#0d1117; border:1px solid var(--border);
     border-radius:8px; color:var(--text); font-size:14px;
     font-family: inherit; resize:vertical; transition: border-color 0.2s;
   }
   textarea:focus, input:focus, select:focus {
-    outline:none; border-color:var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
+    outline:none; border-color:var(--accent); box-shadow: 0 0 0 3px var(--accent-glow);
   }
   textarea { min-height:90px; }
   select { cursor:pointer; }
@@ -97,7 +124,7 @@
 
   /* ── Buttons ── */
   .btn {
-    display:inline-flex; align-items:center; gap:8px;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
     padding:12px 28px; border:none; border-radius:8px;
     font-size:15px; font-weight:600; cursor:pointer;
     transition: all 0.2s; margin-top:16px;
@@ -107,9 +134,7 @@
     box-shadow: 0 0 20px var(--accent-glow);
   }
   .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
-  .btn-primary:disabled {
-    opacity:0.5; cursor:not-allowed; filter:none; transform:none;
-  }
+  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; filter:none; transform:none; }
   .btn-sm {
     padding:6px 14px; font-size:12px; margin-top:0;
     background:var(--surface); color:var(--text); border:1px solid var(--border);
@@ -139,13 +164,11 @@
     display:flex; align-items:center; gap:12px; padding:16px 0;
   }
   .progress-bar {
-    flex:1; height:6px; background:#21262d;
-    border-radius:3px; overflow:hidden;
+    flex:1; height:6px; background:#21262d; border-radius:3px; overflow:hidden;
   }
   .progress-fill {
     height:100%; background:linear-gradient(90deg, var(--accent), #79c0ff);
-    border-radius:3px; transition:width 0.5s;
-    width:0%;
+    border-radius:3px; transition:width 0.5s; width:0%;
   }
   .progress-text { font-size:13px; color:var(--text-dim); min-width:40px; text-align:right; }
 
@@ -202,25 +225,42 @@
     text-align:center; padding:32px; color:var(--text-dim); font-size:12px;
     border-top:1px solid var(--border); margin-top:40px;
   }
+
+  /* ── Empty state ── */
+  .empty-state {
+    padding:40px; text-align:center; color:var(--text-dim); grid-column:1/-1;
+  }
 </style>
 </head>
 <body>
 
+<!-- API Key Setup (shown on first visit) -->
+<div class="setup-overlay hidden" id="setup-overlay">
+  <div class="setup-box">
+    <h2>🔑 输入 API Key</h2>
+    <p>
+      从 <a href="https://platform.agnes-ai.com/settings/apiKeys" target="_blank" rel="noopener">platform.agnes-ai.com</a>
+      获取免费 API Key。<br>Key 仅保存在你的浏览器中，不会上传到任何服务器。
+    </p>
+    <input type="password" id="setup-key-input" placeholder="sk-...">
+    <button class="btn btn-primary" id="setup-save-btn">💾 保存并开始创作</button>
+  </div>
+</div>
+
 <header>
   <h1>🧞 <span>Genie</span></h1>
-  <span class="badge">● Agnes AI</span>
+  <div class="header-right">
+    <span class="key-indicator no-key" id="key-indicator" title="点击设置 API Key">🔑 未设置 Key</span>
+    <span class="badge">● Agnes AI</span>
+  </div>
 </header>
 
 <div class="container">
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab active" data-mode="image">
-      🖼️ 图片生成
-    </button>
-    <button class="tab" data-mode="video">
-      🎬 视频生成
-    </button>
+    <button class="tab active" data-mode="image">🖼️ 图片生成</button>
+    <button class="tab" data-mode="video">🎬 视频生成</button>
   </div>
 
   <!-- Image Mode -->
@@ -232,8 +272,8 @@
         <div class="param">
           <label>模型</label>
           <select id="img-model">
-            <option value="agnes-image-2.1-flash">2.1 Flash — 文生图（高信息密度）</option>
-            <option value="agnes-image-2.0-flash">2.0 Flash — 图生图 / 编辑</option>
+            <option value="agnes-image-2.1-flash">2.1 Flash — 文生图</option>
+            <option value="agnes-image-2.0-flash">2.0 Flash — 图生图/编辑</option>
           </select>
         </div>
         <div class="param">
@@ -250,9 +290,7 @@
           <input type="url" id="img-ref-url" placeholder="https://example.com/image.png">
         </div>
       </div>
-      <button class="btn btn-primary" id="btn-generate-image">
-        ✨ 生成图片
-      </button>
+      <button class="btn btn-primary" id="btn-generate-image">✨ 生成图片</button>
     </div>
   </div>
 
@@ -291,9 +329,7 @@
           <input type="url" id="vid-image-url" placeholder="https://example.com/frame.png">
         </div>
       </div>
-      <button class="btn btn-primary" id="btn-generate-video">
-        🎬 生成视频
-      </button>
+      <button class="btn btn-primary" id="btn-generate-video">🎬 生成视频</button>
     </div>
   </div>
 
@@ -316,9 +352,7 @@
   <div class="card">
     <div class="card-title">🖼️ 作品画廊 <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text-dim)">（点击预览，自动保存）</span></div>
     <div class="gallery" id="gallery">
-      <div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">
-        还没有作品，开始创作吧 ✨
-      </div>
+      <div class="empty-state">还没有作品，开始创作吧 ✨</div>
     </div>
   </div>
 
@@ -330,12 +364,71 @@
 
 <script>
 // ============================================================
+// API Key Management
+// ============================================================
+const STORAGE_KEY = 'genie_api_key';
+
+function getApiKey() {
+  return localStorage.getItem(STORAGE_KEY) || '';
+}
+
+function setApiKey(key) {
+  localStorage.setItem(STORAGE_KEY, key.trim());
+  updateKeyIndicator();
+}
+
+function hasApiKey() {
+  return !!getApiKey();
+}
+
+function updateKeyIndicator() {
+  const el = document.getElementById('key-indicator');
+  if (hasApiKey()) {
+    const key = getApiKey();
+    el.textContent = '🔑 ' + key.slice(0, 8) + '...';
+    el.className = 'key-indicator has-key';
+    el.title = '点击更换 API Key';
+  } else {
+    el.textContent = '🔑 未设置 Key';
+    el.className = 'key-indicator no-key';
+    el.title = '点击设置 API Key';
+  }
+}
+
+function showSetup() {
+  document.getElementById('setup-overlay').classList.remove('hidden');
+  document.getElementById('setup-key-input').value = getApiKey();
+  document.getElementById('setup-key-input').focus();
+}
+
+function hideSetup() {
+  document.getElementById('setup-overlay').classList.add('hidden');
+}
+
+document.getElementById('key-indicator').addEventListener('click', showSetup);
+
+document.getElementById('setup-save-btn').addEventListener('click', () => {
+  const key = document.getElementById('setup-key-input').value.trim();
+  if (!key) { toast('请输入 API Key', true); return; }
+  if (!key.startsWith('sk-')) { toast('Key 格式不对，应该以 sk- 开头', true); return; }
+  setApiKey(key);
+  hideSetup();
+  toast('✅ API Key 已保存');
+});
+
+// Allow Enter to submit in setup
+document.getElementById('setup-key-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('setup-save-btn').click();
+});
+
+// ============================================================
 // Global State
 // ============================================================
+const API_BASE = 'https://apihub.agnes-ai.com/v1';
 const STATE = {
   mode: 'image',
   generating: false,
-  gallery: JSON.parse(localStorage.getItem('gallery') || '[]'),
+  gallery: JSON.parse(localStorage.getItem('genie_gallery') || '[]'),
   pollTimer: null,
 };
 
@@ -353,19 +446,25 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// Image model switch → show/hide ref image input
 document.getElementById('img-model').addEventListener('change', function() {
   document.getElementById('img-ref-group').style.display =
     this.value === 'agnes-image-2.0-flash' ? 'block' : 'none';
 });
 
 // ============================================================
-// API Helpers
+// API Helpers (direct to Agnes AI)
 // ============================================================
+function apiHeaders() {
+  return {
+    'Authorization': `Bearer ${getApiKey()}`,
+    'Content-Type': 'application/json',
+  };
+}
+
 async function apiPost(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(API_BASE + path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders(),
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -374,7 +473,7 @@ async function apiPost(path, body) {
 }
 
 async function apiGet(path) {
-  const res = await fetch(path);
+  const res = await fetch(API_BASE + path, { headers: apiHeaders() });
   const data = await res.json();
   if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data.error || data));
   return data;
@@ -430,43 +529,44 @@ function setContent(html) {
 // ============================================================
 function addToGallery(type, url, prompt) {
   STATE.gallery.unshift({ type, url, prompt, time: Date.now() });
-  if (STATE.gallery.length > 50) STATE.gallery.length = 50; // keep max 50
-  localStorage.setItem('gallery', JSON.stringify(STATE.gallery));
+  if (STATE.gallery.length > 50) STATE.gallery.length = 50;
+  localStorage.setItem('genie_gallery', JSON.stringify(STATE.gallery));
   renderGallery();
 }
 
 function renderGallery() {
   const el = document.getElementById('gallery');
   if (STATE.gallery.length === 0) {
-    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">还没有作品，开始创作吧 ✨</div>';
+    el.innerHTML = '<div class="empty-state">还没有作品，开始创作吧 ✨</div>';
     return;
   }
   el.innerHTML = STATE.gallery.map((item, i) => `
     <div class="gallery-item" onclick="previewGalleryItem(${i})">
       ${item.type === 'image'
-        ? `<img src="${item.url}" alt="${item.prompt}" loading="lazy">`
-        : `<video src="${item.url}" muted></video>`
+        ? `<img src="${escapeHtml(item.url)}" alt="" loading="lazy">`
+        : `<video src="${escapeHtml(item.url)}" muted></video>`
       }
-      <div class="overlay">${item.type === 'image' ? '🖼️' : '🎬'} ${item.prompt.slice(0, 30)}...</div>
+      <div class="overlay">${item.type === 'image' ? '🖼️' : '🎬'} ${escapeHtml(item.prompt.slice(0, 30))}...</div>
     </div>
   `).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
 }
 
 function previewGalleryItem(i) {
   const item = STATE.gallery[i];
   showResult(item.type === 'image' ? '画廊预览 — 图片' : '画廊预览 — 视频');
-  setStatus(`<span style="font-size:12px;color:var(--text-dim)">${item.prompt.slice(0,60)}</span>`);
+  setStatus(`<span style="font-size:12px;color:var(--text-dim)">${escapeHtml(item.prompt.slice(0, 60))}</span>`);
   const media = item.type === 'image'
-    ? `<img src="${item.url}" alt="${item.prompt}">`
-    : `<video src="${item.url}" controls autoplay loop></video>`;
-  setContent(media + `<div style="margin-top:12px"><button class="btn btn-sm" onclick="downloadMedia('${item.url}', '${item.type}')">⬇ 下载</button></div>`);
+    ? `<img src="${escapeHtml(item.url)}" alt="">`
+    : `<video src="${escapeHtml(item.url)}" controls autoplay loop></video>`;
+  setContent(media + `<div style="margin-top:12px"><button class="btn btn-sm" onclick="downloadMedia('${escapeHtml(item.url)}', '${item.type}')">⬇ 下载</button></div>`);
 }
 
-renderGallery();
-
-// ============================================================
-// Download
-// ============================================================
 function downloadMedia(url, type) {
   const a = document.createElement('a');
   a.href = url;
@@ -478,11 +578,14 @@ function downloadMedia(url, type) {
   document.body.removeChild(a);
 }
 
+renderGallery();
+
 // ============================================================
 // Generate Image
 // ============================================================
 document.getElementById('btn-generate-image').addEventListener('click', async () => {
   if (STATE.generating) return;
+  if (!hasApiKey()) { showSetup(); return; }
   const prompt = document.getElementById('img-prompt').value.trim();
   if (!prompt) { toast('请输入图片描述', true); return; }
 
@@ -492,14 +595,12 @@ document.getElementById('btn-generate-image').addEventListener('click', async ()
   btn.innerHTML = '<span class="spinner"></span> 生成中...';
   showResult('🖼️ 图片生成中...');
   setStatus('<span class="status-badge status-in_progress">生成中</span>');
-  setProgress(30);
 
   try {
     const model = document.getElementById('img-model').value;
     const size = document.getElementById('img-size').value;
     const body = { model, prompt, size };
 
-    // For img2img model, add ref image
     if (model === 'agnes-image-2.0-flash') {
       const refUrl = document.getElementById('img-ref-url').value.trim();
       if (refUrl) {
@@ -507,26 +608,26 @@ document.getElementById('btn-generate-image').addEventListener('click', async ()
       }
     }
 
-    setProgress(60);
-    const data = await apiPost('/api/images/generations', body);
-    const imageUrl = data.imageUrl;
+    setProgress(30);
+    const data = await apiPost('/images/generations', body);
+    const imageUrl = data.data?.[0]?.url || data.url;
 
     if (!imageUrl) throw new Error('未获取到图片 URL');
 
     setProgress(100);
     setStatus('<span class="status-badge status-completed">✅ 完成</span>');
     setContent(`
-      <img src="${imageUrl}" alt="${prompt}">
+      <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(prompt)}">
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="downloadMedia('${imageUrl}','image')">⬇ 下载图片</button>
-        <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${imageUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
+        <button class="btn btn-sm" onclick="downloadMedia('${escapeHtml(imageUrl)}','image')">⬇ 下载图片</button>
+        <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${escapeHtml(imageUrl)}').then(()=>toast('链接已复制'))">📋 复制链接</button>
       </div>
     `);
     addToGallery('image', imageUrl, prompt);
     toast('🎉 图片生成成功！');
 
   } catch (err) {
-    setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${err.message}</div>`);
+    setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${escapeHtml(err.message)}</div>`);
     setStatus('<span class="status-badge status-failed">失败</span>');
     toast('生成失败: ' + err.message, true);
   } finally {
@@ -541,6 +642,7 @@ document.getElementById('btn-generate-image').addEventListener('click', async ()
 // ============================================================
 document.getElementById('btn-generate-video').addEventListener('click', async () => {
   if (STATE.generating) return;
+  if (!hasApiKey()) { showSetup(); return; }
   const prompt = document.getElementById('vid-prompt').value.trim();
   if (!prompt) { toast('请输入视频描述', true); return; }
 
@@ -566,20 +668,18 @@ document.getElementById('btn-generate-video').addEventListener('click', async ()
     const imgUrl = document.getElementById('vid-image-url').value.trim();
     if (imgUrl) body.image = imgUrl;
 
-    // Create task
-    const createData = await apiPost('/api/videos', body);
-    const taskId = createData.taskId;
+    const createData = await apiPost('/videos', body);
+    const taskId = createData.id || createData.task_id;
     if (!taskId) throw new Error('未获取到任务 ID');
 
     setProgress(8);
     btn.innerHTML = '<span class="spinner"></span> 正在生成视频...';
     setStatus(`<span class="status-badge status-in_progress">生成中</span> <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${taskId}</span>`);
 
-    // Poll until done
     pollVideoTask(taskId, btn, prompt, 0);
 
   } catch (err) {
-    setContent(`<div style="color:var(--red);padding:20px">❌ 创建失败：${err.message}</div>`);
+    setContent(`<div style="color:var(--red);padding:20px">❌ 创建失败：${escapeHtml(err.message)}</div>`);
     setStatus('<span class="status-badge status-failed">失败</span>');
     toast('创建失败: ' + err.message, true);
     STATE.generating = false;
@@ -589,9 +689,9 @@ document.getElementById('btn-generate-video').addEventListener('click', async ()
 });
 
 async function pollVideoTask(taskId, btn, prompt, attempt) {
-  const MAX_ATTEMPTS = 180; // ~15 min at 5s intervals
+  const MAX_ATTEMPTS = 180;
   if (attempt >= MAX_ATTEMPTS) {
-    setContent('<div style="color:var(--red);padding:20px">⏰ 超时：视频生成超过 15 分钟，请稍后重试</div>');
+    setContent('<div style="color:var(--red);padding:20px">⏰ 超时：视频生成超过 15 分钟</div>');
     setStatus('<span class="status-badge status-failed">超时</span>');
     toast('视频生成超时', true);
     STATE.generating = false;
@@ -602,13 +702,10 @@ async function pollVideoTask(taskId, btn, prompt, attempt) {
 
   STATE.pollTimer = setTimeout(async () => {
     try {
-      const data = await apiGet(`/api/videos/${taskId}`);
-
-      // Update progress (estimate if 0)
+      const data = await apiGet('/videos/' + taskId);
       const progress = data.progress > 0 ? data.progress : Math.min(95, 8 + attempt * 2);
       setProgress(progress);
 
-      // Update status badge
       const statusMap = {
         queued: '<span class="status-badge status-queued">排队中</span>',
         in_progress: '<span class="status-badge status-in_progress">生成中</span>',
@@ -617,21 +714,24 @@ async function pollVideoTask(taskId, btn, prompt, attempt) {
       };
       setStatus(statusMap[data.status] || data.status);
 
-      if (data.status === 'completed' && data.videoUrl) {
-        setProgress(100);
-        setContent(`
-          <video src="${data.videoUrl}" controls autoplay loop></video>
-          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="downloadMedia('${data.videoUrl}','video')">⬇ 下载视频</button>
-            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${data.videoUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
-          </div>
-        `);
-        addToGallery('video', data.videoUrl, prompt);
-        toast('🎉 视频生成成功！');
-        STATE.generating = false;
-        btn.disabled = false;
-        btn.innerHTML = '🎬 生成视频';
-        return;
+      if (data.status === 'completed') {
+        const videoUrl = data.remixed_from_video_id || data.video_url;
+        if (videoUrl) {
+          setProgress(100);
+          setContent(`
+            <video src="${escapeHtml(videoUrl)}" controls autoplay loop></video>
+            <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-sm" onclick="downloadMedia('${escapeHtml(videoUrl)}','video')">⬇ 下载视频</button>
+              <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${escapeHtml(videoUrl)}').then(()=>toast('链接已复制'))">📋 复制链接</button>
+            </div>
+          `);
+          addToGallery('video', videoUrl, prompt);
+          toast('🎉 视频生成成功！');
+          STATE.generating = false;
+          btn.disabled = false;
+          btn.innerHTML = '🎬 生成视频';
+          return;
+        }
       }
 
       if (data.status === 'failed') {
@@ -644,21 +744,20 @@ async function pollVideoTask(taskId, btn, prompt, attempt) {
         return;
       }
 
-      // Continue polling
       pollVideoTask(taskId, btn, prompt, attempt + 1);
 
     } catch (err) {
-      setContent(`<div style="color:var(--red);padding:20px">❌ 查询状态失败：${err.message}</div>`);
+      setContent(`<div style="color:var(--red);padding:20px">❌ 查询状态失败：${escapeHtml(err.message)}</div>`);
       toast('查询失败: ' + err.message, true);
       STATE.generating = false;
       btn.disabled = false;
       btn.innerHTML = '🎬 生成视频';
     }
-  }, 5000); // poll every 5 seconds
+  }, 5000);
 }
 
 // ============================================================
-// Keyboard shortcut: Cmd/Ctrl+Enter to generate
+// Keyboard shortcut
 // ============================================================
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -674,9 +773,18 @@ document.addEventListener('keydown', (e) => {
 // ============================================================
 // Init
 // ============================================================
-console.log('🎨 AI 创作平台已就绪');
-console.log('💡 提示: Cmd/Ctrl + Enter 快速生成');
-console.log('📦 画廊作品:', STATE.gallery.length);
+function init() {
+  updateKeyIndicator();
+  if (!hasApiKey()) {
+    // Show setup on first visit
+    const setupOverlay = document.getElementById('setup-overlay');
+    setupOverlay.classList.remove('hidden');
+  }
+  console.log('🧞 Genie 已就绪');
+  console.log('💡 Cmd/Ctrl + Enter 快速生成');
+  console.log('📦 画廊作品:', STATE.gallery.length);
+}
+init();
 </script>
 </body>
 </html>
