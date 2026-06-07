@@ -794,6 +794,7 @@ function showToast(msg){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>toast.classList.remove('show'), 3000);
 }
+window.showToast = showToast;
 
 function downloadMedia(url, type){
   const a = document.createElement('a');
@@ -802,6 +803,7 @@ function downloadMedia(url, type){
   a.target = '_blank'; a.rel = 'noopener';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
+window.downloadMedia = downloadMedia;
 
 /* ===================== ROUGH.JS HELPERS ===================== */
 function addRoughRect(svgEl, x, y, w, h, opts){
@@ -1081,6 +1083,7 @@ function previewGalleryItem(item){
 function closePreview(){
   imgResult.classList.remove('show');
 }
+window.closePreview = closePreview;
 
 function escapeHtml(str){
   const d=document.createElement('div');d.textContent=str||'';return d.innerHTML;
@@ -1145,7 +1148,8 @@ function updateQueueItem(taskId, updates){
   const q=getQueue();const i=q.findIndex(t=>t.taskId===taskId);
   if(i>=0){Object.assign(q[i],updates);saveQueue(q);}
 }
-function removeFromQueue(taskId){const q=getQueue().filter(t=>t.taskId!==taskId);saveQueue(q);delete queuePollers[taskId];}
+function removeFromQueue(taskId){const q=getQueue().filter(t=>t.taskId!==taskId);saveQueue(q);delete queuePollers[taskId];renderQueue();}
+window.removeFromQueue = removeFromQueue;
 
 function renderQueue(){
   const q = getQueue();
@@ -1169,7 +1173,7 @@ function renderQueue(){
       <div style="width:60px;height:4px;background:#ddd;border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:var(--amber);border-radius:2px"></div>
       </div>
-      <button onclick="removeFromQueue('${t.taskId}');renderQueue()" style="border:none;background:none;cursor:pointer;color:var(--text-mid);font-size:1.2rem;padding:0 4px" title="删除任务">✕</button>
+      <button onclick="removeFromQueue('${t.taskId}')" style="border:none;background:none;cursor:pointer;color:var(--text-mid);font-size:1.2rem;padding:0 4px" title="删除任务">✕</button>
     </div>`;
   }).join('');
 }
@@ -1300,6 +1304,7 @@ async function regenerateImage(prompt, model, size, refUrl){
   if(refUrl) imgRefUrl.value = refUrl;
   await doImageGen(prompt, model, size, parseInt(imgCount.value)||1, refUrl);
 }
+window.regenerateImage = regenerateImage;
 
 async function handleImageGen(){
   const prompt = imgPrompt.value.trim();
