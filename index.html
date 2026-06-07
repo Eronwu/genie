@@ -1180,9 +1180,9 @@ async function generateVideo(prompt, numFrames, frameRate, width, height, imageU
   if(!taskId) throw new Error('无法获取任务 ID');
   // API returns estimated duration in seconds
   // video duration ≠ processing time. Real processing takes much longer (queue + render).
-  // Use a realistic estimate: max(video_duration * 30, 120 seconds)
+  // Real test: 3.4s video took 168s → ratio ~50x. Minimum 3 min.
   const vidSecs = parseFloat(data.seconds) || (numFrames / frameRate);
-  const estSeconds = Math.max(vidSecs * 40, 600);
+  const estSeconds = Math.max(vidSecs * 50, 180);
   return {taskId, estSeconds, vidSecs};
 }
 
