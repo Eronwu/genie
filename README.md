@@ -4,69 +4,46 @@
 
 > ✨ Agnes AI 提供**无限期免费**的多模态 API，无需绑定信用卡。
 
-## 🚀 快速开始
+## 🌐 在线体验
 
-### 1. 获取 API Key
+👉 **[eronwu.github.io/genie](https://eronwu.github.io/genie)**
 
-访问 [https://platform.agnes-ai.com/settings/apiKeys](https://platform.agnes-ai.com/settings/apiKeys) 注册并获取免费 API Key。
+打开即用，首次输入 API Key 即可。Key 只保存在你的浏览器中，不会上传。
 
-### 2. 配置
+## 🚀 本地运行
 
 ```bash
-# 克隆项目
 git clone https://github.com/Eronwu/genie.git
 cd genie
-
-# 安装依赖
 npm install
-
-# 配置 API Key
-cp .env.example .env
-# 编辑 .env 文件，填入你的 API Key
+cp .env.example .env   # 填入 API Key
+npm start              # → http://localhost:3000
 ```
-
-### 3. 启动
-
-```bash
-npm start
-```
-
-浏览器打开 **http://localhost:3000**
 
 ## 🎯 功能
 
 | 功能 | 说明 |
 |------|------|
-| 🖼️ 图片生成 | 文生图 / 图生图，支持多种尺寸 |
+| 🖼️ 图片生成 | 文生图 / 图生图，多种模型和尺寸可选 |
 | 🎬 视频生成 | 文生视频 / 图生视频，3~18 秒可选 |
-| 📊 实时进度 | 视频生成自动轮询，进度条显示 |
-| 🖼️ 本地画廊 | 自动保存作品到浏览器，支持预览下载 |
+| 📋 任务队列 | 多视频并行排队，刷新自动恢复 |
+| 📊 智能进度 | 排队/生成两阶段进度 + 预估剩余时间 |
+| 🖼️ 本地画廊 | 自动保存作品，点击预览放大 |
 | ⌨️ 快捷键 | `Cmd/Ctrl + Enter` 一键生成 |
 
 ## 🛠️ 技术栈
 
-- **后端**: Node.js + Express（API 代理）
-- **前端**: 原生 HTML/CSS/JS（无框架依赖）
-- **AI**: Agnes AI API（图片 + 视频生成）
+- **前端**：纯静态 HTML/CSS/JS，Rough.js 手绘风格
+- **后端**（本地版）：Node.js + Express（API 代理）
+- **线上版**：GitHub Pages，浏览器直连 API
+- **AI**：Agnes AI API（图片 + 视频生成）
 
-## 📁 项目结构
+## 📁 分支
 
-```
-genie/
-├── server.js           # Express 后端，代理 API 请求
-├── public/
-│   └── index.html      # 前端界面
-├── .env.example        # 环境变量示例
-├── package.json
-└── README.md
-```
-
-## 📝 环境变量
-
-| 变量 | 说明 | 必需 |
+| 分支 | 用途 | 部署 |
 |------|------|------|
-| `AGNES_API_KEY` | Agnes AI 的 API Key | ✅ |
-| `PORT` | 服务端口，默认 3000 | ❌ |
+| [`gh-pages`](https://github.com/Eronwu/genie/tree/gh-pages) | 纯静态线上版 | GitHub Pages |
+| `main` | Node.js 本地版 | 本地 `npm start` |
 
 ## 📄 License
 
