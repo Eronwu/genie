@@ -1204,7 +1204,7 @@ function updateQueueItem(taskId, updates){
   const q=getQueue();const i=q.findIndex(t=>t.taskId===taskId);
   if(i>=0){Object.assign(q[i],updates);saveQueue(q);}
 }
-function removeFromQueue(taskId){const q=getQueue().filter(t=>t.taskId!==taskId);saveQueue(q);}
+function removeFromQueue(taskId){const q=getQueue().filter(t=>t.taskId!==taskId);saveQueue(q);delete queuePollers[taskId];}
 
 function renderQueue(){
   const q = getQueue();
@@ -1228,7 +1228,7 @@ function renderQueue(){
       <div style="width:60px;height:4px;background:#ddd;border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:var(--amber);border-radius:2px"></div>
       </div>
-      ${t.status==='completed'||t.status==='failed'?`<button onclick="removeFromQueue('${t.taskId}');renderQueue()" style="border:none;background:none;cursor:pointer;color:var(--text-mid);font-size:1.2rem">&times;</button>`:''}
+      <button onclick="removeFromQueue('${t.taskId}');renderQueue()" style="border:none;background:none;cursor:pointer;color:var(--text-mid);font-size:1.2rem;padding:0 4px" title="删除任务">✕</button>
     </div>`;
   }).join('');
 }
