@@ -645,6 +645,12 @@ footer .deco-wrap .smiley-svg{
     </div>
   </section>
 
+  <!-- ===== TASK QUEUE ===== -->
+  <section class="gallery-section" id="queueWrap" style="display:none">
+    <div class="gallery-title">📋 任务队列 <span style="font-weight:400;font-size:.8rem;color:var(--text-mid)">（刷新页面可恢复）</span></div>
+    <div id="queueList"></div>
+  </section>
+
   <!-- ===== GALLERY ===== -->
   <section class="gallery-section">
     <div class="gallery-title">
@@ -1129,7 +1135,7 @@ async function generateVideo(prompt, numFrames, frameRate, width, height, imageU
   // video duration ≠ processing time. Real processing takes much longer (queue + render).
   // Use a realistic estimate: max(video_duration * 30, 120 seconds)
   const vidSecs = parseFloat(data.seconds) || (numFrames / frameRate);
-  const estSeconds = Math.max(vidSecs * 30, 120);
+  const estSeconds = Math.max(vidSecs * 40, 600);
   return {taskId, estSeconds, vidSecs};
 }
 
@@ -1137,55 +1143,89 @@ async function pollVideoStatus(taskId){
   return apiFetch(`/videos/${taskId}`);
 }
 
-/* ===================== PENDING TASK RECOVERY ===================== */
-function savePendingTask(info){
-  try{localStorage.setItem(PENDING_KEY, JSON.stringify(info))}catch(e){}
+/* ===================== PENDING TASK QUEUE ===================== */
+function getQueue(){
+  try{return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]')}catch(e){return[]}
+}
+function saveQueue(q){
+  // clean expired (>1 hour)
+  q = q.filter(t=>Date.now()-t.startTime<60*60*1000);
+  try{localStorage.setItem(PENDING_KEY,JSON.stringify(q))}catch(e){}
+}
+function addToQueue(task){const q=getQueue();q.push(task);saveQueue(q);}
+function updateQueueItem(taskId, updates){
+  const q=getQueue();const i=q.findIndex(t=>t.taskId===taskId);
+  if(i>=0){Object.assign(q[i],updates);saveQueue(q);}
+}
+function removeFromQueue(taskId){const q=getQueue().filter(t=>t.taskId!==taskId);saveQueue(q);}
+
+function renderQueue(){
+  const q = getQueue();
+  const el = document.getElementById('queueList');
+  const wrap = document.getElementById('queueWrap');
+  if(!el||!wrap) return;
+  if(!q.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  el.innerHTML = q.map(t=>{
+    const elapsed = Math.ceil((Date.now()-t.startTime)/1000);
+    let statusHTML, pct;
+    if(t.status==='completed'){statusHTML='<span style="color:var(--green)">✅ 完成</span>';pct=100}
+    else if(t.status==='failed'){statusHTML='<span style="color:var(--red)">❌ 失败</span>';pct=0}
+    else if(t.status==='in_progress'){statusHTML='<span style="color:var(--amber)">🎬 生成中</span>';pct=Math.min(88,Math.max(5,elapsed/(t.estMs/1000)*100))}
+    else {statusHTML='<span style="color:var(--text-mid)">⏳ 排队</span>';pct=Math.min(10,elapsed/60)}
+
+    return `<div class="queue-item" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(251,247,240,0.3);border-radius:6px;margin-bottom:6px;font-size:.85rem">
+      <span style="min-width:50px">${statusHTML}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dark)">${escapeHtml((t.prompt||'').slice(0,40))}</span>
+      <span style="color:var(--text-mid);min-width:50px;text-align:right">${elapsed}s</span>
+      <div style="width:60px;height:4px;background:#ddd;border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:var(--amber);border-radius:2px"></div>
+      </div>
+      ${t.status==='completed'||t.status==='failed'?`<button onclick="removeFromQueue('${t.taskId}');renderQueue()" style="border:none;background:none;cursor:pointer;color:var(--text-mid);font-size:1.2rem">&times;</button>`:''}
+    </div>`;
+  }).join('');
 }
 
-function loadPendingTask(){
-  try{
-    const raw = localStorage.getItem(PENDING_KEY);
-    if(!raw) return null;
-    const info = JSON.parse(raw);
-    // expire after 30 minutes
-    if(Date.now() - info.startTime > 30*60*1000){
-      localStorage.removeItem(PENDING_KEY);
-      return null;
-    }
-    return info;
-  }catch(e){return null}
+// Start polling all queued/in_progress tasks
+let queuePollers = {};
+function startQueuePolling(){
+  const q = getQueue().filter(t=>t.status==='queued'||t.status==='in_progress');
+  q.forEach(t=>{
+    if(queuePollers[t.taskId]) return; // already polling
+    queuePollers[t.taskId] = true;
+    pollQueueTask(t);
+  });
 }
 
-function clearPendingTask(){
-  localStorage.removeItem(PENDING_KEY);
+async function pollQueueTask(t){
+  const taskId = t.taskId;
+  while(true){
+    await new Promise(r=>setTimeout(r,8000));
+    const q = getQueue();
+    const item = q.find(x=>x.taskId===taskId);
+    if(!item||item.status==='completed'||item.status==='failed'){delete queuePollers[taskId];renderQueue();return;}
+    try{
+      const st = await pollVideoStatus(taskId);
+      const status = (st.status||'').toLowerCase();
+      if(status==='completed'){
+        const url = st.remixed_from_video_id||st.video_url||st.url;
+        if(url){
+          updateQueueItem(taskId,{status:'completed',resultUrl:url});
+          addToGallery({type:'video',url,prompt:t.prompt});
+          showToast('🎉 视频生成完成：'+t.prompt.slice(0,20)+'...');
+        }
+        delete queuePollers[taskId];renderQueue();return;
+      }else if(status==='failed'){
+        updateQueueItem(taskId,{status:'failed',error:st.error||'未知错误'});
+        delete queuePollers[taskId];renderQueue();return;
+      }else if(status==='in_progress'){
+        updateQueueItem(taskId,{status:'in_progress'});
+      }
+      renderQueue();
+    }catch(e){/* retry next poll */}
+  }
 }
 
-async function recoverPendingTask(info){
-  showToast('🔄 正在恢复之前的视频任务...');
-  // Switch to video tab
-  switchTab('video');
-  vidPrompt.value = info.prompt || '';
-  vidDuration.value = info.numFrames || 121;
-  vidFps.value = info.frameRate || 24;
-  if(info.w) vidSize.value = info.w+'x'+info.h;
-
-  isGenerating = true;
-  vidGenBtn.disabled = true;
-  vidGenBtn.textContent = '恢复中 ...';
-  vidResult.classList.remove('show');
-  vidResultContent.innerHTML = '';
-  vidResultLabel.textContent = '';
-  vidResultActions.style.display = 'none';
-  progressArea.classList.add('show');
-  drawProgress(0.05);
-
-  const elapsed = Date.now() - info.startTime;
-  const p = Math.min(0.92, Math.max(0.08, elapsed / (info.estMs * 1.5)));
-  drawProgress(p);
-  progressStatus.textContent = '正在恢复任务...';
-
-  await pollLoop(info.taskId, info.prompt, info.estMs, info.startTime);
-}
 
 async function pollLoop(taskId, prompt, estMs, startTime){
   // estMs is total estimated wait (queue + render). Queue usually dominates.
@@ -1312,21 +1352,24 @@ async function handleVideoGen(){
     const frameRate = parseInt(vidFps.value);
     const [w, h] = vidSize.value.split('x').map(Number);
     const imageUrl = vidImageUrl.value.trim();
-    const {taskId, estSeconds} = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
+    const {taskId, estSeconds, vidSecs} = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
     const estMs = estSeconds * 1000;
     const startTime = Date.now();
 
-    // Save for recovery after page refresh
-    savePendingTask({taskId, prompt, estMs, startTime, numFrames, frameRate, w, h});
+    // Add to queue (persists across refreshes, supports multiple concurrent tasks)
+    addToQueue({taskId, prompt, estMs, startTime, vidSecs, status:'queued'});
+    startQueuePolling();
+    renderQueue();
 
-    progressStatus.textContent = '⏳ 已提交，排队中...';
+    progressStatus.textContent = '⏳ 已加入队列（' + Math.round(vidSecs) + 's 视频，预计排队 ' + Math.ceil(estSeconds/60) + ' 分钟）';
     drawProgress(0.03);
-    await pollLoop(taskId, prompt, estMs, startTime);
+
+    // Switch to queue view
+    document.getElementById('queueWrap').scrollIntoView({behavior:'smooth',block:'center'});
 
   }catch(e){
     showToast('生成失败: '+e.message);
     progressStatus.textContent='出错了，请重试';
-    clearPendingTask();
   }finally{
     isGenerating=false;
     vidGenBtn.disabled=false;
@@ -1401,10 +1444,14 @@ document.addEventListener('DOMContentLoaded',()=>{
   requestAnimationFrame(()=>{redrawAll();renderGallery()});
 
   // Recover pending video task after page refresh
-  const pending = loadPendingTask();
-  if(pending && apiKey){
-    setTimeout(()=>recoverPendingTask(pending), 800);
-  }
+  // Recover pending video queue
+  const queue = getQueue().filter(t=>t.status==='queued'||t.status==='in_progress');
+  if(queue.length && apiKey){
+    renderQueue();
+    startQueuePolling();
+    if(queue.length===1) showToast('🔄 正在恢复 1 个视频任务...');
+    else showToast('🔄 正在恢复 ' + queue.length + ' 个视频任务...');
+  } else { renderQueue(); }
 
   let resizeTimer;
   window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(redrawAll,350)});
