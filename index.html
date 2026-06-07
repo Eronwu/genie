@@ -170,6 +170,33 @@ header .sub{
 .tape.b{background:rgba(232,238,245,0.8)}
 .tape.v{background:rgba(237,232,245,0.8)}
 .tape.w{background:rgba(240,240,240,0.7)}
+/* params row */
+.params-row{
+  display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;position:relative;z-index:1
+}
+.param-item{flex:1;min-width:120px}
+.param-item label{
+  display:block;font-family:'Ma Shan Zheng',cursive;font-size:.85rem;
+  color:var(--text-mid);margin-bottom:4px
+}
+.param-item select,.param-item input{
+  width:100%;padding:8px 10px;
+  font-family:'Ma Shan Zheng',cursive;font-size:.9rem;
+  border:2px dashed var(--text-mid);border-radius:4px;
+  background:rgba(251,247,240,0.6);color:var(--text-dark);
+  outline:none;transition:border-color .2s;cursor:pointer
+}
+.param-item select:focus,.param-item input:focus{border-color:var(--amber);border-style:solid}
+/* result actions */
+.result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;position:relative;z-index:1}
+.result-actions .action-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:6px 14px;font-family:'Ma Shan Zheng',cursive;font-size:.9rem;
+  border:2px dashed var(--text-mid);border-radius:4px;
+  background:rgba(251,247,240,0.5);color:var(--text-dark);
+  cursor:pointer;transition:all .2s
+}
+.result-actions .action-btn:hover{border-color:var(--amber);border-style:solid}
 /* form elements */
 .sticky-card label{
   display:block;
@@ -529,6 +556,28 @@ footer .deco-wrap .smiley-svg{
         <svg class="deco-svg arrow-up" width="24" height="20" viewBox="0 0 24 20" style="position:absolute;left:auto;right:-8px;top:-18px"></svg>
       </label>
       <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花，水彩风格..." rows="3"></textarea>
+      <div class="params-row">
+        <div class="param-item">
+          <label>模型</label>
+          <select id="imgModel">
+            <option value="agnes-image-2.1-flash">2.1 Flash · 文生图</option>
+            <option value="agnes-image-2.0-flash">2.0 Flash · 图生图</option>
+          </select>
+        </div>
+        <div class="param-item">
+          <label>尺寸</label>
+          <select id="imgSize">
+            <option value="1024x1024">1024×1024 方形</option>
+            <option value="1024x768">1024×768 横版</option>
+            <option value="768x1024">768×1024 竖版</option>
+            <option value="2048x2048">2048×2048 高清</option>
+          </select>
+        </div>
+        <div class="param-item" id="imgRefGroup" style="display:none">
+          <label>参考图 URL</label>
+          <input type="url" id="imgRefUrl" placeholder="https://...">
+        </div>
+      </div>
       <div class="btn-wrap" id="imgBtnWrap">
         <svg class="rough-btn-svg" id="imgBtnSvg" height="52"></svg>
         <button class="rough-btn" id="imgGenBtn">生成图片</button>
@@ -537,6 +586,7 @@ footer .deco-wrap .smiley-svg{
       <div class="result-wrap" id="imgResult">
         <div id="imgResultContent"></div>
         <div class="result-label" id="imgResultLabel"></div>
+        <div class="result-actions" id="imgResultActions" style="display:none"></div>
       </div>
     </div>
   </section>
@@ -548,6 +598,36 @@ footer .deco-wrap .smiley-svg{
       <div class="tape tr b"></div>
       <label>描述你想要的动态画面</label>
       <textarea id="vidPrompt" placeholder="例如：日落时分的海滩，海浪轻轻拍打沙滩，延时摄影..." rows="3"></textarea>
+      <div class="params-row">
+        <div class="param-item">
+          <label>时长</label>
+          <select id="vidDuration">
+            <option value="81">~3 秒 (81帧)</option>
+            <option value="121" selected>~5 秒 (121帧)</option>
+            <option value="161">~7 秒 (161帧)</option>
+            <option value="241">~10 秒 (241帧)</option>
+            <option value="441">~18 秒 (441帧)</option>
+          </select>
+        </div>
+        <div class="param-item">
+          <label>帧率</label>
+          <select id="vidFps">
+            <option value="24" selected>24 fps</option>
+            <option value="30">30 fps</option>
+          </select>
+        </div>
+        <div class="param-item">
+          <label>分辨率</label>
+          <select id="vidSize">
+            <option value="1152x768">1152×768</option>
+            <option value="768x1152">768×1152 竖版</option>
+          </select>
+        </div>
+        <div class="param-item">
+          <label>起始图 URL</label>
+          <input type="url" id="vidImageUrl" placeholder="可选 https://...">
+        </div>
+      </div>
       <div class="btn-wrap" id="vidBtnWrap">
         <svg class="rough-btn-svg" id="vidBtnSvg" height="52"></svg>
         <button class="rough-btn" id="vidGenBtn">生成视频</button>
@@ -560,6 +640,7 @@ footer .deco-wrap .smiley-svg{
       <div class="result-wrap" id="vidResult">
         <div id="vidResultContent"></div>
         <div class="result-label" id="vidResultLabel"></div>
+        <div class="result-actions" id="vidResultActions" style="display:none"></div>
       </div>
     </div>
   </section>
@@ -632,18 +713,28 @@ const secImage    = $('secImage');
 const secVideo    = $('secVideo');
 const imgCard     = $('imgCard');
 const imgPrompt   = $('imgPrompt');
+const imgModel    = $('imgModel');
+const imgSize     = $('imgSize');
+const imgRefGroup = $('imgRefGroup');
+const imgRefUrl   = $('imgRefUrl');
 const imgGenBtn   = $('imgGenBtn');
 const imgBtnSvg   = $('imgBtnSvg');
 const imgResult   = $('imgResult');
 const imgResultContent = $('imgResultContent');
 const imgResultLabel   = $('imgResultLabel');
+const imgResultActions = $('imgResultActions');
 const vidCard     = $('vidCard');
 const vidPrompt   = $('vidPrompt');
+const vidDuration = $('vidDuration');
+const vidFps      = $('vidFps');
+const vidSize     = $('vidSize');
+const vidImageUrl = $('vidImageUrl');
 const vidGenBtn   = $('vidGenBtn');
 const vidBtnSvg   = $('vidBtnSvg');
 const vidResult   = $('vidResult');
 const vidResultContent = $('vidResultContent');
 const vidResultLabel   = $('vidResultLabel');
+const vidResultActions = $('vidResultActions');
 const progressArea= $('progressArea');
 const progressSvg = $('progressSvg');
 const progressStatus = $('progressStatus');
@@ -668,6 +759,14 @@ function showToast(msg){
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>toast.classList.remove('show'), 3000);
+}
+
+function downloadMedia(url, type){
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = type==='image' ? 'genie-image.png' : 'genie-video.mp4';
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 /* ===================== ROUGH.JS HELPERS ===================== */
@@ -984,29 +1083,40 @@ async function apiFetch(path, options={}){
   return res.json();
 }
 
-async function generateImage(prompt){
-  const data = await apiFetch('/images/generations',{
-    method:'POST',
-    body:JSON.stringify({prompt, n:1, size:'1024x1024'})
-  });
-  return data.data?.[0]?.url || data.data?.[0]?.b64_json || data.url || null;
+async function generateImage(prompt, model, size, refUrl){
+  const body = {prompt, model, size};
+  if(model==='agnes-image-2.0-flash' && refUrl){
+    body.extra_body = {tags:['img2img'], image:[refUrl], response_format:'url'};
+  }
+  const data = await apiFetch('/images/generations',{method:'POST',body:JSON.stringify(body)});
+  return data.data?.[0]?.url || data.url || null;
 }
 
-async function generateVideo(prompt){
-  const data = await apiFetch('/video/generations',{
-    method:'POST',
-    body:JSON.stringify({prompt, size:'1024x1024', duration:5})
-  });
-  const taskId = data.id || data.task_id || data.data?.id;
+async function generateVideo(prompt, numFrames, frameRate, width, height, imageUrl){
+  const body = {
+    model:'agnes-video-v2.0', prompt,
+    num_frames: numFrames, frame_rate: frameRate,
+    width, height
+  };
+  if(imageUrl) body.image = imageUrl;
+  const data = await apiFetch('/videos',{method:'POST',body:JSON.stringify(body)});
+  const taskId = data.id || data.task_id;
   if(!taskId) throw new Error('无法获取任务 ID');
   return taskId;
 }
 
 async function pollVideoStatus(taskId){
-  return apiFetch(`/video/generations/${taskId}`);
+  return apiFetch(`/videos/${taskId}`);
 }
 
 /* ===================== HANDLE GENERATION ===================== */
+function buildResultActions(url, type){
+  return `
+    <button class="action-btn" onclick="downloadMedia('${url.replace(/'/g,"\\'")}','${type}')">⬇ 下载</button>
+    <button class="action-btn" onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}').then(()=>showToast('链接已复制'))">📋 复制链接</button>
+  `;
+}
+
 async function handleImageGen(){
   const prompt = imgPrompt.value.trim();
   if(!prompt){showToast('请输入描述文字');return}
@@ -1017,14 +1127,20 @@ async function handleImageGen(){
   imgResult.classList.remove('show');
   imgResultContent.innerHTML='';
   imgResultLabel.textContent='';
+  imgResultActions.style.display='none';
 
   try{
-    const url = await generateImage(prompt);
+    const model = imgModel.value;
+    const size = imgSize.value;
+    const refUrl = imgRefUrl.value.trim();
+    const url = await generateImage(prompt, model, size, refUrl);
     if(!url) throw new Error('没有返回图片');
     const img = document.createElement('img');
     img.src=url; img.alt=prompt; img.loading='lazy';
     imgResultContent.appendChild(img);
     imgResultLabel.textContent='"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
+    imgResultActions.innerHTML = buildResultActions(url, 'image');
+    imgResultActions.style.display = 'flex';
     imgResult.classList.add('show');
     addToGallery({type:'image',url,prompt});
     showToast('图片生成成功!');
@@ -1049,29 +1165,34 @@ async function handleVideoGen(){
   vidResult.classList.remove('show');
   vidResultContent.innerHTML='';
   vidResultLabel.textContent='';
+  vidResultActions.style.display='none';
   progressArea.classList.add('show');
   progressStatus.textContent='正在提交任务 ...';
   drawProgress(0.05);
 
   try{
-    const taskId = await generateVideo(prompt);
+    const numFrames = parseInt(vidDuration.value);
+    const frameRate = parseInt(vidFps.value);
+    const [w, h] = vidSize.value.split('x').map(Number);
+    const imageUrl = vidImageUrl.value.trim();
+    const taskId = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
     progressStatus.textContent='AI 绘制中 ...';
     drawProgress(0.12);
 
-    let attempts=0, maxAttempts=120, done=false, resultUrl=null;
+    let attempts=0, maxAttempts=180, done=false, resultUrl=null;
     while(!done && attempts<maxAttempts){
-      await new Promise(r=>setTimeout(r,2500));
+      await new Promise(r=>setTimeout(r,5000));
       attempts++;
       const st = await pollVideoStatus(taskId);
-      const status = (st.status||st.state||'').toLowerCase();
+      const status = (st.status||'').toLowerCase();
       const p = st.progress || (attempts/maxAttempts);
       drawProgress(Math.min(0.92, 0.12 + p*0.8));
 
-      if(status==='completed'||status==='succeeded'||status==='done'){
-        resultUrl = st.video_url||st.url||st.output?.video_url||st.data?.url;
+      if(status==='completed'){
+        resultUrl = st.remixed_from_video_id || st.video_url || st.url;
         done=true; break;
-      } else if(status==='failed'||status==='error'){
-        throw new Error(st.error?.message||st.message||'视频生成失败');
+      } else if(status==='failed'){
+        throw new Error(st.error||'视频生成失败');
       }
     }
     if(!done) throw new Error('生成超时，请稍后重试');
@@ -1081,6 +1202,8 @@ async function handleVideoGen(){
     vid.src=resultUrl; vid.controls=true; vid.muted=true; vid.playsInline=true; vid.preload='metadata';
     vidResultContent.appendChild(vid);
     vidResultLabel.textContent='"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
+    vidResultActions.innerHTML = buildResultActions(resultUrl, 'video');
+    vidResultActions.style.display = 'flex';
     vidResult.classList.add('show');
     addToGallery({type:'video',url:resultUrl,prompt});
     showToast('视频生成成功!');
@@ -1152,6 +1275,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   vidPrompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleVideoGen()}});
   keyBadge.addEventListener('click',showApiModal);
   apiModal.addEventListener('click',e=>{if(e.target===apiModal) apiModal.classList.remove('show')});
+  imgModel.addEventListener('change',()=>{
+    imgRefGroup.style.display = imgModel.value==='agnes-image-2.0-flash' ? 'block' : 'none';
+  });
 
   if(!apiKey) checkApiKey();
 
@@ -1159,6 +1285,15 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   let resizeTimer;
   window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(redrawAll,350)});
+
+  // Cmd/Ctrl+Enter shortcut
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){
+      e.preventDefault();
+      if(currentTab==='image') handleImageGen();
+      else handleVideoGen();
+    }
+  });
 });
 
 })();
