@@ -1,12 +1,22 @@
+require('dotenv').config();
+
 const express = require('express');
 const https = require('https');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const API_BASE = 'apihub.agnes-ai.com';
-const API_KEY = process.env.AGNES_API_KEY || 'sk-89RYYz7RNga69MC53nERPY7zPqGzraLQms80OvX6Gf3XMSEO';
+const API_KEY = process.env.AGNES_API_KEY;
+
+if (!API_KEY) {
+  console.error('❌ 错误: 请设置 AGNES_API_KEY 环境变量');
+  console.error('   方式1: 创建 .env 文件，写入 AGNES_API_KEY=你的key');
+  console.error('   方式2: export AGNES_API_KEY=你的key');
+  console.error('   免费获取: https://platform.agnes-ai.com/settings/apiKeys');
+  process.exit(1);
+}
 
 // Auto-configure proxy from env (supports Clash, Surge, etc.)
 const PROXY_URL = process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY || null;
