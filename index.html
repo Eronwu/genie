@@ -170,6 +170,11 @@ header .sub{
 .tape.b{background:rgba(232,238,245,0.8)}
 .tape.v{background:rgba(237,232,245,0.8)}
 .tape.w{background:rgba(240,240,240,0.7)}
+/* style chips */
+.style-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;position:relative;z-index:1}
+.chip{font-family:'Ma Shan Zheng',cursive;font-size:.85rem;padding:4px 12px;border:2px dashed var(--text-mid);border-radius:20px;background:rgba(251,247,240,0.5);color:var(--text-dark);cursor:pointer;transition:all .2s;white-space:nowrap}
+.chip:hover{border-color:var(--amber);border-style:solid}
+.chip.active{border-color:var(--amber);border-style:solid;background:var(--amber-glow);color:var(--amber);font-weight:700}
 /* params row */
 .params-row{
   display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;position:relative;z-index:1
@@ -555,7 +560,17 @@ footer .deco-wrap .smiley-svg{
         描述你想要的画面
         <svg class="deco-svg arrow-up" width="24" height="20" viewBox="0 0 24 20" style="position:absolute;left:auto;right:-8px;top:-18px"></svg>
       </label>
-      <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花，水彩风格..." rows="3"></textarea>
+      <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花..." rows="3"></textarea>
+      <div class="style-chips" id="styleChips">
+        <button class="chip" data-style="realistic photography, 8k, detailed">📷 写实摄影</button>
+        <button class="chip" data-style="anime style, studio ghibli">🎨 动漫风</button>
+        <button class="chip" data-style="watercolor painting, soft colors">🖌️ 水彩</button>
+        <button class="chip" data-style="oil painting, textured brushstrokes">🖼️ 油画</button>
+        <button class="chip" data-style="cyberpunk, neon lights, sci-fi">🌃 赛博朋克</button>
+        <button class="chip" data-style="pixel art, 16-bit, retro game">👾 像素风</button>
+        <button class="chip" data-style="chinese ink wash painting, shan shui">🏔️ 水墨</button>
+        <button class="chip" data-style="pencil sketch, hand-drawn">✏️ 素描</button>
+      </div>
       <div class="params-row">
         <div class="param-item">
           <label>模型</label>
@@ -571,6 +586,14 @@ footer .deco-wrap .smiley-svg{
             <option value="1024x768">1024×768 横版</option>
             <option value="768x1024">768×1024 竖版</option>
             <option value="2048x2048">2048×2048 高清</option>
+          </select>
+        </div>
+        <div class="param-item">
+          <label>数量</label>
+          <select id="imgCount">
+            <option value="1" selected>1 张</option>
+            <option value="2">2 张</option>
+            <option value="4">4 张</option>
           </select>
         </div>
         <div class="param-item" id="imgRefGroup" style="display:none">
@@ -722,6 +745,8 @@ const imgCard     = $('imgCard');
 const imgPrompt   = $('imgPrompt');
 const imgModel    = $('imgModel');
 const imgSize     = $('imgSize');
+const imgCount    = $('imgCount');
+const styleChips  = $('styleChips');
 const imgRefGroup = $('imgRefGroup');
 const imgRefUrl   = $('imgRefUrl');
 const imgGenBtn   = $('imgGenBtn');
@@ -1294,33 +1319,70 @@ function buildResultActions(url, type){
   `;
 }
 
+function buildResultActionsWithRegen(urls, type, prompt, model, size, refUrl){
+  const btns = urls.map(u=>`
+    <button class="action-btn" onclick="downloadMedia('${u.replace(/'/g,"\\'")}','${type}')">⬇ 下载</button>
+    <button class="action-btn" onclick="navigator.clipboard.writeText('${u.replace(/'/g,"\\'")}').then(()=>showToast('链接已复制'))">📋 复制链接</button>
+  `).join('');
+  const regenBtn = `<button class="action-btn" onclick="regenerateImage('${prompt.replace(/'/g,"\\'")}','${model}','${size}','${(refUrl||'').replace(/'/g,"\\'")}')" style="border-color:var(--amber);border-style:solid">🔄 重新生成</button>`;
+  return btns + regenBtn;
+}
+
+let lastImageParams = null;
+async function regenerateImage(prompt, model, size, refUrl){
+  if(isGenerating) return;
+  imgPrompt.value = prompt;
+  imgModel.value = model;
+  imgSize.value = size;
+  if(refUrl) imgRefUrl.value = refUrl;
+  await doImageGen(prompt, model, size, parseInt(imgCount.value)||1, refUrl);
+}
+
 async function handleImageGen(){
   const prompt = imgPrompt.value.trim();
   if(!prompt){showToast('请输入描述文字');return}
   if(isGenerating) return;
-  isGenerating=true;
-  imgGenBtn.disabled=true;
-  imgGenBtn.textContent='生成中 ...';
+
+  // Apply style chip if active
+  const activeChip = styleChips.querySelector('.chip.active');
+  const styleSuffix = activeChip ? ', ' + activeChip.dataset.style : '';
+  const fullPrompt = prompt + styleSuffix;
+
+  const model = imgModel.value;
+  const size = imgSize.value;
+  const count = parseInt(imgCount.value) || 1;
+  const refUrl = imgRefUrl.value.trim();
+
+  await doImageGen(fullPrompt, model, size, count, refUrl);
+}
+
+async function doImageGen(prompt, model, size, count, refUrl){
+  isGenerating = true;
+  imgGenBtn.disabled = true;
+  imgGenBtn.textContent = '生成中 ...';
   imgResult.classList.remove('show');
-  imgResultContent.innerHTML='';
-  imgResultLabel.textContent='';
-  imgResultActions.style.display='none';
+  imgResultContent.innerHTML = '';
+  imgResultLabel.textContent = '';
+  imgResultActions.style.display = 'none';
 
   try{
-    const model = imgModel.value;
-    const size = imgSize.value;
-    const refUrl = imgRefUrl.value.trim();
-    const url = await generateImage(prompt, model, size, refUrl);
-    if(!url) throw new Error('没有返回图片');
-    const img = document.createElement('img');
-    img.src=url; img.alt=prompt; img.loading='lazy';
-    imgResultContent.appendChild(img);
-    imgResultLabel.textContent='"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
-    imgResultActions.innerHTML = buildResultActions(url, 'image');
+    const urls = [];
+    for(let i=0;i<count;i++){
+      const url = await generateImage(prompt, model, size, refUrl);
+      if(url) urls.push(url);
+    }
+    if(!urls.length) throw new Error('没有返回图片');
+
+    imgResultContent.innerHTML = urls.map(u=>
+      `<img src="${escapeHtml(u)}" alt="" style="max-width:100%;border-radius:3px;margin-bottom:8px">`
+    ).join('');
+    imgResultLabel.textContent = '"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
+    imgResultActions.innerHTML = buildResultActionsWithRegen(urls, 'image', prompt, model, size, refUrl);
     imgResultActions.style.display = 'flex';
     imgResult.classList.add('show');
-    addToGallery({type:'image',url,prompt});
-    showToast('图片生成成功!');
+    urls.forEach(u=>addToGallery({type:'image',url:u,prompt}));
+    lastImageParams = {prompt, model, size, refUrl};
+    showToast(urls.length===1?'🎉 图片生成成功!':'🎉 '+urls.length+' 张图片生成成功!');
   }catch(e){
     showToast('生成失败: '+e.message);
   }finally{
@@ -1330,6 +1392,7 @@ async function handleImageGen(){
     requestAnimationFrame(()=>applyRoughBorder(imgCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#F0E8D8',fillStyle:'solid',seed:1001}));
   }
 }
+
 
 async function handleVideoGen(){
   const prompt = vidPrompt.value.trim();
@@ -1436,6 +1499,15 @@ document.addEventListener('DOMContentLoaded',()=>{
   apiModal.addEventListener('click',e=>{if(e.target===apiModal) apiModal.classList.remove('show')});
   imgModel.addEventListener('change',()=>{
     imgRefGroup.style.display = imgModel.value==='agnes-image-2.0-flash' ? 'block' : 'none';
+  });
+
+  // Style chip toggle
+  styleChips.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      chip.classList.toggle('active');
+      // Deselect other chips (single-select)
+      styleChips.querySelectorAll('.chip').forEach(c=>{if(c!==chip)c.classList.remove('active')});
+    });
   });
 
   updateKeyBadge();
