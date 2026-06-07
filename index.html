@@ -1126,8 +1126,11 @@ async function generateVideo(prompt, numFrames, frameRate, width, height, imageU
   const taskId = data.id || data.task_id;
   if(!taskId) throw new Error('无法获取任务 ID');
   // API returns estimated duration in seconds
-  const estSeconds = parseFloat(data.seconds) || (numFrames / frameRate);
-  return {taskId, estSeconds};
+  // video duration ≠ processing time. Real processing takes much longer (queue + render).
+  // Use a realistic estimate: max(video_duration * 30, 120 seconds)
+  const vidSecs = parseFloat(data.seconds) || (numFrames / frameRate);
+  const estSeconds = Math.max(vidSecs * 30, 120);
+  return {taskId, estSeconds, vidSecs};
 }
 
 async function pollVideoStatus(taskId){
@@ -1185,23 +1188,36 @@ async function recoverPendingTask(info){
 }
 
 async function pollLoop(taskId, prompt, estMs, startTime){
-  const maxAttempts = Math.max(60, Math.ceil(estMs/1000 * 3));
-  let attempts = 0, done = false, resultUrl = null;
+  // estMs is total estimated wait (queue + render). Queue usually dominates.
+  // We keep the bar very low during queue, then ramp up once in_progress.
+  const maxAttempts = Math.max(40, Math.ceil(estMs/1000 * 4));
+  let attempts = 0, done = false, resultUrl = null, inProgress = false;
 
   while(!done && attempts < maxAttempts){
-    await new Promise(r=>setTimeout(r, 3000));
+    await new Promise(r=>setTimeout(r, 5000));
     attempts++;
     const elapsed = Date.now() - startTime;
     const st = await pollVideoStatus(taskId);
     const status = (st.status||'').toLowerCase();
 
     let p;
-    if(st.progress > 0){ p = st.progress / 100; }
-    else { p = Math.min(0.92, Math.max(0.08, elapsed / (estMs * 1.5))); }
-    drawProgress(p);
-
-    const remain = Math.max(0, Math.ceil((estMs - elapsed) / 1000));
-    progressStatus.textContent = 'AI 绘制中... 预计剩余 ' + remain + ' 秒';
+    if(status==='in_progress'){
+      if(!inProgress){ inProgress=true; }
+      if(st.progress > 0){ p = st.progress / 100; }
+      else { p = Math.min(0.88, 0.15 + elapsed / (estMs * 1.2)); }
+      drawProgress(p);
+      const remain = Math.max(0, Math.ceil((estMs - elapsed) / 1000));
+      progressStatus.textContent = '🎬 生成中... 预计剩余 ' + remain + ' 秒';
+    } else if(status==='queued'){
+      // Keep bar low during queue, slowly creeping up
+      p = Math.min(0.12, 0.02 + attempts * 0.003);
+      drawProgress(p);
+      const waited = Math.ceil(elapsed / 1000);
+      progressStatus.textContent = '⏳ 排队中... 已等待 ' + waited + ' 秒';
+    } else {
+      p = Math.min(0.92, elapsed / (estMs * 1.5));
+      drawProgress(p);
+    }
 
     if(status==='completed'){
       resultUrl = st.remixed_from_video_id || st.video_url || st.url;
@@ -1303,8 +1319,8 @@ async function handleVideoGen(){
     // Save for recovery after page refresh
     savePendingTask({taskId, prompt, estMs, startTime, numFrames, frameRate, w, h});
 
-    progressStatus.textContent = 'AI 绘制中（预计 ' + Math.ceil(estSeconds) + ' 秒）...';
-    drawProgress(0.08);
+    progressStatus.textContent = '⏳ 已提交，排队中...';
+    drawProgress(0.03);
     await pollLoop(taskId, prompt, estMs, startTime);
 
   }catch(e){
