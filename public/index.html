@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 AI 创作平台 | Agnes AI</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-dim: #8b949e;
+    --accent: #58a6ff;
+    --accent-glow: rgba(88,166,255,0.25);
+    --green: #3fb950;
+    --red: #f85149;
+    --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top:0; z-index:10;
+  }
+  header h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
+  header h1 span { color: var(--accent); }
+  .badge {
+    font-size:11px; background:#1a3a2a; color:var(--green);
+    padding:4px 10px; border-radius:20px; font-weight:600;
+  }
+
+  /* ── Layout ── */
+  .container { max-width:960px; margin:0 auto; padding:28px 20px 60px; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display:flex; gap:4px; background:var(--surface);
+    border-radius:var(--radius); padding:4px; margin-bottom:24px;
+    border:1px solid var(--border);
+  }
+  .tab {
+    flex:1; padding:12px 20px; border:none; background:transparent;
+    color:var(--text-dim); font-size:15px; font-weight:600;
+    border-radius:9px; cursor:pointer; transition:all 0.2s;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .tab.active {
+    background:#1f2937; color:var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,0.03); }
+
+  /* ── Form Card ── */
+  .card {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:24px; margin-bottom:20px;
+  }
+  .card-title {
+    font-size:14px; font-weight:600; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px;
+  }
+  textarea, input[type="text"], input[type="url"], select {
+    width:100%; padding:12px 16px;
+    background:#0d1117; border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-size:14px;
+    font-family: inherit; resize:vertical; transition: border-color 0.2s;
+  }
+  textarea:focus, input:focus, select:focus {
+    outline:none; border-color:var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  textarea { min-height:90px; }
+  select { cursor:pointer; }
+
+  /* ── Params Row ── */
+  .params {
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
+    gap:12px; margin-top:16px;
+  }
+  .param label {
+    display:block; font-size:12px; font-weight:600;
+    color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 28px; border:none; border-radius:8px;
+    font-size:15px; font-weight:600; cursor:pointer;
+    transition: all 0.2s; margin-top:16px;
+  }
+  .btn-primary {
+    background: var(--accent); color:#fff;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .btn-primary:disabled {
+    opacity:0.5; cursor:not-allowed; filter:none; transform:none;
+  }
+  .btn-sm {
+    padding:6px 14px; font-size:12px; margin-top:0;
+    background:var(--surface); color:var(--text); border:1px solid var(--border);
+  }
+  .btn-sm:hover { background:#30363d; }
+
+  /* ── Result ── */
+  .result {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); overflow:hidden;
+    display:none; margin-bottom:20px;
+  }
+  .result.show { display:block; }
+  .result-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    font-weight:600; font-size:14px;
+  }
+  .result-body { padding:20px; }
+  .result-body img, .result-body video {
+    width:100%; border-radius:8px; display:block;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    display:flex; align-items:center; gap:12px; padding:16px 0;
+  }
+  .progress-bar {
+    flex:1; height:6px; background:#21262d;
+    border-radius:3px; overflow:hidden;
+  }
+  .progress-fill {
+    height:100%; background:linear-gradient(90deg, var(--accent), #79c0ff);
+    border-radius:3px; transition:width 0.5s;
+    width:0%;
+  }
+  .progress-text { font-size:13px; color:var(--text-dim); min-width:40px; text-align:right; }
+
+  /* ── Spinner ── */
+  .spinner {
+    display:inline-block; width:18px; height:18px;
+    border:2px solid rgba(255,255,255,0.2);
+    border-top-color:#fff; border-radius:50%;
+    animation:spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── Status Badge ── */
+  .status-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12px; padding:4px 10px; border-radius:20px; font-weight:600;
+  }
+  .status-queued { background:#1a2332; color:#58a6ff; }
+  .status-in_progress { background:#2a1f0e; color:#d2991d; }
+  .status-completed { background:#1a3a2a; color:#3fb950; }
+  .status-failed { background:#3a1a1a; color:#f85149; }
+
+  /* ── Gallery ── */
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; }
+  .gallery-item {
+    position:relative; border-radius:8px; overflow:hidden;
+    border:1px solid var(--border); cursor:pointer;
+    aspect-ratio:1; background:#0d1117;
+    transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .gallery-item:hover { transform:scale(1.03); box-shadow:0 4px 20px rgba(0,0,0,0.5); }
+  .gallery-item img, .gallery-item video {
+    width:100%; height:100%; object-fit:cover; display:block;
+  }
+  .gallery-item .overlay {
+    position:absolute; bottom:0; left:0; right:0;
+    padding:8px 10px; background:linear-gradient(transparent, rgba(0,0,0,0.8));
+    font-size:11px; color:#ccc;
+  }
+
+  /* ── Toasts ── */
+  .toast {
+    position:fixed; bottom:24px; right:24px;
+    background:var(--surface); border:1px solid var(--border);
+    padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600;
+    z-index:100; animation:slideIn 0.3s ease;
+    box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  }
+  .toast.error { border-color:var(--red); color:var(--red); }
+  @keyframes slideIn { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+
+  /* ── Footer ── */
+  footer {
+    text-align:center; padding:32px; color:var(--text-dim); font-size:12px;
+    border-top:1px solid var(--border); margin-top:40px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎨 <span>AI</span> 创作平台</h1>
+  <span class="badge">● Agnes AI</span>
+</header>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-mode="image">
+      🖼️ 图片生成
+    </button>
+    <button class="tab" data-mode="video">
+      🎬 视频生成
+    </button>
+  </div>
+
+  <!-- Image Mode -->
+  <div id="panel-image" class="mode-panel">
+    <div class="card">
+      <div class="card-title">✏️ 描述你想生成的画面</div>
+      <textarea id="img-prompt" placeholder="例如：一座漂浮在云雾峡谷上方的发光城市，日出时分，电影级写实风格，广角构图，柔和的金色光线"></textarea>
+      <div class="params">
+        <div class="param">
+          <label>模型</label>
+          <select id="img-model">
+            <option value="agnes-image-2.1-flash">2.1 Flash — 文生图（高信息密度）</option>
+            <option value="agnes-image-2.0-flash">2.0 Flash — 图生图 / 编辑</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>尺寸</label>
+          <select id="img-size">
+            <option value="1024x1024">1024 × 1024 (方形)</option>
+            <option value="1024x768">1024 × 768 (横版)</option>
+            <option value="768x1024">768 × 1024 (竖版)</option>
+            <option value="2048x2048">2048 × 2048 (高清方形)</option>
+          </select>
+        </div>
+        <div class="param" id="img-ref-group" style="display:none">
+          <label>参考图片 URL（可选）</label>
+          <input type="url" id="img-ref-url" placeholder="https://example.com/image.png">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-generate-image">
+        ✨ 生成图片
+      </button>
+    </div>
+  </div>
+
+  <!-- Video Mode -->
+  <div id="panel-video" class="mode-panel" style="display:none">
+    <div class="card">
+      <div class="card-title">🎥 描述你想生成的视频</div>
+      <textarea id="vid-prompt" placeholder="例如：电影级镜头，一只猫在日落海滩上漫步，镜头缓慢平移，温暖的金色光线"></textarea>
+      <div class="params">
+        <div class="param">
+          <label>时长</label>
+          <select id="vid-duration">
+            <option value="81">~3 秒 (81帧)</option>
+            <option value="121" selected>~5 秒 (121帧)</option>
+            <option value="161">~7 秒 (161帧)</option>
+            <option value="241">~10 秒 (241帧)</option>
+            <option value="441">~18 秒 (441帧)</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>帧率</label>
+          <select id="vid-fps">
+            <option value="24" selected>24 fps</option>
+            <option value="30">30 fps</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>分辨率</label>
+          <select id="vid-size">
+            <option value="1152x768">1152 × 768</option>
+            <option value="768x1152">768 × 1152 (竖版)</option>
+          </select>
+        </div>
+        <div class="param">
+          <label>起始图片 URL（可选）</label>
+          <input type="url" id="vid-image-url" placeholder="https://example.com/frame.png">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-generate-video">
+        🎬 生成视频
+      </button>
+    </div>
+  </div>
+
+  <!-- Result Area -->
+  <div class="result" id="result">
+    <div class="result-header">
+      <span id="result-title">生成结果</span>
+      <span id="result-status"></span>
+    </div>
+    <div class="result-body" id="result-body">
+      <div class="progress-wrap" id="progress-wrap" style="display:none">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <span class="progress-text" id="progress-text">0%</span>
+      </div>
+      <div id="result-content"></div>
+    </div>
+  </div>
+
+  <!-- Gallery -->
+  <div class="card">
+    <div class="card-title">🖼️ 作品画廊 <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text-dim)">（点击预览，自动保存）</span></div>
+    <div class="gallery" id="gallery">
+      <div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">
+        还没有作品，开始创作吧 ✨
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  基于 Agnes AI API 驱动 · 免费无限生成
+</footer>
+
+<script>
+// ============================================================
+// Global State
+// ============================================================
+const STATE = {
+  mode: 'image',
+  generating: false,
+  gallery: JSON.parse(localStorage.getItem('gallery') || '[]'),
+  pollTimer: null,
+};
+
+// ============================================================
+// Mode Switching
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    STATE.mode = tab.dataset.mode;
+    document.getElementById('panel-image').style.display = STATE.mode === 'image' ? 'block' : 'none';
+    document.getElementById('panel-video').style.display = STATE.mode === 'video' ? 'block' : 'none';
+    hideResult();
+  });
+});
+
+// Image model switch → show/hide ref image input
+document.getElementById('img-model').addEventListener('change', function() {
+  document.getElementById('img-ref-group').style.display =
+    this.value === 'agnes-image-2.0-flash' ? 'block' : 'none';
+});
+
+// ============================================================
+// API Helpers
+// ============================================================
+async function apiPost(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data.error || data));
+  return data;
+}
+
+async function apiGet(path) {
+  const res = await fetch(path);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data.error || data));
+  return data;
+}
+
+// ============================================================
+// Toast
+// ============================================================
+function toast(msg, isError = false) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isError ? ' error' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.remove(); }, 3500);
+}
+
+// ============================================================
+// Result UI
+// ============================================================
+function showResult(title) {
+  const el = document.getElementById('result');
+  el.classList.add('show');
+  document.getElementById('result-title').textContent = title;
+  document.getElementById('result-status').innerHTML = '';
+  document.getElementById('result-content').innerHTML = '';
+  document.getElementById('progress-wrap').style.display = 'none';
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function hideResult() {
+  document.getElementById('result').classList.remove('show');
+  if (STATE.pollTimer) { clearTimeout(STATE.pollTimer); STATE.pollTimer = null; }
+}
+
+function setStatus(html) {
+  document.getElementById('result-status').innerHTML = html;
+}
+
+function setProgress(pct) {
+  const wrap = document.getElementById('progress-wrap');
+  wrap.style.display = 'flex';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = Math.round(pct) + '%';
+}
+
+function setContent(html) {
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('result-content').innerHTML = html;
+}
+
+// ============================================================
+// Gallery
+// ============================================================
+function addToGallery(type, url, prompt) {
+  STATE.gallery.unshift({ type, url, prompt, time: Date.now() });
+  if (STATE.gallery.length > 50) STATE.gallery.length = 50; // keep max 50
+  localStorage.setItem('gallery', JSON.stringify(STATE.gallery));
+  renderGallery();
+}
+
+function renderGallery() {
+  const el = document.getElementById('gallery');
+  if (STATE.gallery.length === 0) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">还没有作品，开始创作吧 ✨</div>';
+    return;
+  }
+  el.innerHTML = STATE.gallery.map((item, i) => `
+    <div class="gallery-item" onclick="previewGalleryItem(${i})">
+      ${item.type === 'image'
+        ? `<img src="${item.url}" alt="${item.prompt}" loading="lazy">`
+        : `<video src="${item.url}" muted></video>`
+      }
+      <div class="overlay">${item.type === 'image' ? '🖼️' : '🎬'} ${item.prompt.slice(0, 30)}...</div>
+    </div>
+  `).join('');
+}
+
+function previewGalleryItem(i) {
+  const item = STATE.gallery[i];
+  showResult(item.type === 'image' ? '画廊预览 — 图片' : '画廊预览 — 视频');
+  setStatus(`<span style="font-size:12px;color:var(--text-dim)">${item.prompt.slice(0,60)}</span>`);
+  const media = item.type === 'image'
+    ? `<img src="${item.url}" alt="${item.prompt}">`
+    : `<video src="${item.url}" controls autoplay loop></video>`;
+  setContent(media + `<div style="margin-top:12px"><button class="btn btn-sm" onclick="downloadMedia('${item.url}', '${item.type}')">⬇ 下载</button></div>`);
+}
+
+renderGallery();
+
+// ============================================================
+// Download
+// ============================================================
+function downloadMedia(url, type) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = type === 'image' ? 'ai-image.png' : 'ai-video.mp4';
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ============================================================
+// Generate Image
+// ============================================================
+document.getElementById('btn-generate-image').addEventListener('click', async () => {
+  if (STATE.generating) return;
+  const prompt = document.getElementById('img-prompt').value.trim();
+  if (!prompt) { toast('请输入图片描述', true); return; }
+
+  STATE.generating = true;
+  const btn = document.getElementById('btn-generate-image');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 生成中...';
+  showResult('🖼️ 图片生成中...');
+  setStatus('<span class="status-badge status-in_progress">生成中</span>');
+  setProgress(30);
+
+  try {
+    const model = document.getElementById('img-model').value;
+    const size = document.getElementById('img-size').value;
+    const body = { model, prompt, size };
+
+    // For img2img model, add ref image
+    if (model === 'agnes-image-2.0-flash') {
+      const refUrl = document.getElementById('img-ref-url').value.trim();
+      if (refUrl) {
+        body.extra_body = { tags: ['img2img'], image: [refUrl], response_format: 'url' };
+      }
+    }
+
+    setProgress(60);
+    const data = await apiPost('/api/images/generations', body);
+    const imageUrl = data.imageUrl;
+
+    if (!imageUrl) throw new Error('未获取到图片 URL');
+
+    setProgress(100);
+    setStatus('<span class="status-badge status-completed">✅ 完成</span>');
+    setContent(`
+      <img src="${imageUrl}" alt="${prompt}">
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="downloadMedia('${imageUrl}','image')">⬇ 下载图片</button>
+        <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${imageUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
+      </div>
+    `);
+    addToGallery('image', imageUrl, prompt);
+    toast('🎉 图片生成成功！');
+
+  } catch (err) {
+    setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${err.message}</div>`);
+    setStatus('<span class="status-badge status-failed">失败</span>');
+    toast('生成失败: ' + err.message, true);
+  } finally {
+    STATE.generating = false;
+    btn.disabled = false;
+    btn.innerHTML = '✨ 生成图片';
+  }
+});
+
+// ============================================================
+// Generate Video
+// ============================================================
+document.getElementById('btn-generate-video').addEventListener('click', async () => {
+  if (STATE.generating) return;
+  const prompt = document.getElementById('vid-prompt').value.trim();
+  if (!prompt) { toast('请输入视频描述', true); return; }
+
+  STATE.generating = true;
+  const btn = document.getElementById('btn-generate-video');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 创建任务...';
+  showResult('🎬 视频生成中...');
+  setStatus('<span class="status-badge status-queued">排队中</span>');
+  setProgress(5);
+
+  try {
+    const [w, h] = document.getElementById('vid-size').value.split('x').map(Number);
+    const body = {
+      model: 'agnes-video-v2.0',
+      prompt,
+      width: w,
+      height: h,
+      num_frames: parseInt(document.getElementById('vid-duration').value),
+      frame_rate: parseInt(document.getElementById('vid-fps').value),
+    };
+
+    const imgUrl = document.getElementById('vid-image-url').value.trim();
+    if (imgUrl) body.image = imgUrl;
+
+    // Create task
+    const createData = await apiPost('/api/videos', body);
+    const taskId = createData.taskId;
+    if (!taskId) throw new Error('未获取到任务 ID');
+
+    setProgress(8);
+    btn.innerHTML = '<span class="spinner"></span> 正在生成视频...';
+    setStatus(`<span class="status-badge status-in_progress">生成中</span> <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${taskId}</span>`);
+
+    // Poll until done
+    pollVideoTask(taskId, btn, prompt, 0);
+
+  } catch (err) {
+    setContent(`<div style="color:var(--red);padding:20px">❌ 创建失败：${err.message}</div>`);
+    setStatus('<span class="status-badge status-failed">失败</span>');
+    toast('创建失败: ' + err.message, true);
+    STATE.generating = false;
+    btn.disabled = false;
+    btn.innerHTML = '🎬 生成视频';
+  }
+});
+
+async function pollVideoTask(taskId, btn, prompt, attempt) {
+  const MAX_ATTEMPTS = 180; // ~15 min at 5s intervals
+  if (attempt >= MAX_ATTEMPTS) {
+    setContent('<div style="color:var(--red);padding:20px">⏰ 超时：视频生成超过 15 分钟，请稍后重试</div>');
+    setStatus('<span class="status-badge status-failed">超时</span>');
+    toast('视频生成超时', true);
+    STATE.generating = false;
+    btn.disabled = false;
+    btn.innerHTML = '🎬 生成视频';
+    return;
+  }
+
+  STATE.pollTimer = setTimeout(async () => {
+    try {
+      const data = await apiGet(`/api/videos/${taskId}`);
+
+      // Update progress (estimate if 0)
+      const progress = data.progress > 0 ? data.progress : Math.min(95, 8 + attempt * 2);
+      setProgress(progress);
+
+      // Update status badge
+      const statusMap = {
+        queued: '<span class="status-badge status-queued">排队中</span>',
+        in_progress: '<span class="status-badge status-in_progress">生成中</span>',
+        completed: '<span class="status-badge status-completed">✅ 完成</span>',
+        failed: '<span class="status-badge status-failed">失败</span>',
+      };
+      setStatus(statusMap[data.status] || data.status);
+
+      if (data.status === 'completed' && data.videoUrl) {
+        setProgress(100);
+        setContent(`
+          <video src="${data.videoUrl}" controls autoplay loop></video>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="downloadMedia('${data.videoUrl}','video')">⬇ 下载视频</button>
+            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${data.videoUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
+          </div>
+        `);
+        addToGallery('video', data.videoUrl, prompt);
+        toast('🎉 视频生成成功！');
+        STATE.generating = false;
+        btn.disabled = false;
+        btn.innerHTML = '🎬 生成视频';
+        return;
+      }
+
+      if (data.status === 'failed') {
+        setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${data.error || '未知错误'}</div>`);
+        setStatus('<span class="status-badge status-failed">失败</span>');
+        toast('视频生成失败', true);
+        STATE.generating = false;
+        btn.disabled = false;
+        btn.innerHTML = '🎬 生成视频';
+        return;
+      }
+
+      // Continue polling
+      pollVideoTask(taskId, btn, prompt, attempt + 1);
+
+    } catch (err) {
+      setContent(`<div style="color:var(--red);padding:20px">❌ 查询状态失败：${err.message}</div>`);
+      toast('查询失败: ' + err.message, true);
+      STATE.generating = false;
+      btn.disabled = false;
+      btn.innerHTML = '🎬 生成视频';
+    }
+  }, 5000); // poll every 5 seconds
+}
+
+// ============================================================
+// Keyboard shortcut: Cmd/Ctrl+Enter to generate
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (STATE.mode === 'image') {
+      document.getElementById('btn-generate-image').click();
+    } else {
+      document.getElementById('btn-generate-video').click();
+    }
+  }
+});
+
+// ============================================================
+// Init
+// ============================================================
+console.log('🎨 AI 创作平台已就绪');
+console.log('💡 提示: Cmd/Ctrl + Enter 快速生成');
+console.log('📦 画廊作品:', STATE.gallery.length);
+</script>
+</body>
+</html>
