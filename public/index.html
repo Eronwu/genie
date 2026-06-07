@@ -2,269 +2,606 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🧞 Genie — AI 创作平台</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Genie AI — 手绘速写本</title>
+<link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/roughjs@latest/bundled/rough.js"></script>
 <style>
-  :root {
-    --bg: #0b0f14;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --text-dim: #8b949e;
-    --accent: #58a6ff;
-    --accent-glow: rgba(88,166,255,0.25);
-    --green: #3fb950;
-    --red: #f85149;
-    --radius: 12px;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-
-  /* ── Header ── */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky; top:0; z-index:10;
-  }
-  header h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
-  header h1 span { color: var(--accent); }
-  .badge {
-    font-size:11px; background:#1a3a2a; color:var(--green);
-    padding:4px 10px; border-radius:20px; font-weight:600;
-  }
-
-  /* ── Layout ── */
-  .container { max-width:960px; margin:0 auto; padding:28px 20px 60px; }
-
-  /* ── Tabs ── */
-  .tabs {
-    display:flex; gap:4px; background:var(--surface);
-    border-radius:var(--radius); padding:4px; margin-bottom:24px;
-    border:1px solid var(--border);
-  }
-  .tab {
-    flex:1; padding:12px 20px; border:none; background:transparent;
-    color:var(--text-dim); font-size:15px; font-weight:600;
-    border-radius:9px; cursor:pointer; transition:all 0.2s;
-    display:flex; align-items:center; justify-content:center; gap:7px;
-  }
-  .tab.active {
-    background:#1f2937; color:var(--text);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  }
-  .tab:hover:not(.active) { color:var(--text); background:rgba(255,255,255,0.03); }
-
-  /* ── Form Card ── */
-  .card {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); padding:24px; margin-bottom:20px;
-  }
-  .card-title {
-    font-size:14px; font-weight:600; color:var(--text-dim);
-    text-transform:uppercase; letter-spacing:0.5px; margin-bottom:16px;
-  }
-  textarea, input[type="text"], input[type="url"], select {
-    width:100%; padding:12px 16px;
-    background:#0d1117; border:1px solid var(--border);
-    border-radius:8px; color:var(--text); font-size:14px;
-    font-family: inherit; resize:vertical; transition: border-color 0.2s;
-  }
-  textarea:focus, input:focus, select:focus {
-    outline:none; border-color:var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-  }
-  textarea { min-height:90px; }
-  select { cursor:pointer; }
-
-  /* ── Params Row ── */
-  .params {
-    display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr));
-    gap:12px; margin-top:16px;
-  }
-  .param label {
-    display:block; font-size:12px; font-weight:600;
-    color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px;
-  }
-
-  /* ── Buttons ── */
-  .btn {
-    display:inline-flex; align-items:center; gap:8px;
-    padding:12px 28px; border:none; border-radius:8px;
-    font-size:15px; font-weight:600; cursor:pointer;
-    transition: all 0.2s; margin-top:16px;
-  }
-  .btn-primary {
-    background: var(--accent); color:#fff;
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-  .btn-primary:hover { filter:brightness(1.15); transform:translateY(-1px); }
-  .btn-primary:disabled {
-    opacity:0.5; cursor:not-allowed; filter:none; transform:none;
-  }
-  .btn-sm {
-    padding:6px 14px; font-size:12px; margin-top:0;
-    background:var(--surface); color:var(--text); border:1px solid var(--border);
-  }
-  .btn-sm:hover { background:#30363d; }
-
-  /* ── Result ── */
-  .result {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:var(--radius); overflow:hidden;
-    display:none; margin-bottom:20px;
-  }
-  .result.show { display:block; }
-  .result-header {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:14px 20px; border-bottom:1px solid var(--border);
-    font-weight:600; font-size:14px;
-  }
-  .result-body { padding:20px; }
-  .result-body img, .result-body video {
-    width:100%; border-radius:8px; display:block;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-  }
-
-  /* ── Progress ── */
-  .progress-wrap {
-    display:flex; align-items:center; gap:12px; padding:16px 0;
-  }
-  .progress-bar {
-    flex:1; height:6px; background:#21262d;
-    border-radius:3px; overflow:hidden;
-  }
-  .progress-fill {
-    height:100%; background:linear-gradient(90deg, var(--accent), #79c0ff);
-    border-radius:3px; transition:width 0.5s;
-    width:0%;
-  }
-  .progress-text { font-size:13px; color:var(--text-dim); min-width:40px; text-align:right; }
-
-  /* ── Spinner ── */
-  .spinner {
-    display:inline-block; width:18px; height:18px;
-    border:2px solid rgba(255,255,255,0.2);
-    border-top-color:#fff; border-radius:50%;
-    animation:spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
-
-  /* ── Status Badge ── */
-  .status-badge {
-    display:inline-flex; align-items:center; gap:6px;
-    font-size:12px; padding:4px 10px; border-radius:20px; font-weight:600;
-  }
-  .status-queued { background:#1a2332; color:#58a6ff; }
-  .status-in_progress { background:#2a1f0e; color:#d2991d; }
-  .status-completed { background:#1a3a2a; color:#3fb950; }
-  .status-failed { background:#3a1a1a; color:#f85149; }
-
-  /* ── Gallery ── */
-  .gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; }
-  .gallery-item {
-    position:relative; border-radius:8px; overflow:hidden;
-    border:1px solid var(--border); cursor:pointer;
-    aspect-ratio:1; background:#0d1117;
-    transition:transform 0.2s, box-shadow 0.2s;
-  }
-  .gallery-item:hover { transform:scale(1.03); box-shadow:0 4px 20px rgba(0,0,0,0.5); }
-  .gallery-item img, .gallery-item video {
-    width:100%; height:100%; object-fit:cover; display:block;
-  }
-  .gallery-item .overlay {
-    position:absolute; bottom:0; left:0; right:0;
-    padding:8px 10px; background:linear-gradient(transparent, rgba(0,0,0,0.8));
-    font-size:11px; color:#ccc;
-  }
-
-  /* ── Toasts ── */
-  .toast {
-    position:fixed; bottom:24px; right:24px;
-    background:var(--surface); border:1px solid var(--border);
-    padding:12px 20px; border-radius:8px; font-size:13px; font-weight:600;
-    z-index:100; animation:slideIn 0.3s ease;
-    box-shadow:0 8px 30px rgba(0,0,0,0.5);
-  }
-  .toast.error { border-color:var(--red); color:var(--red); }
-  @keyframes slideIn { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-
-  /* ── Footer ── */
-  footer {
-    text-align:center; padding:32px; color:var(--text-dim); font-size:12px;
-    border-top:1px solid var(--border); margin-top:40px;
-  }
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#2C2826;
+  --dot:#3D3835;
+  --text-dark:#2B2826;
+  --text-mid:#7B7875;
+  --amber:#E8850C;
+  --amber-glow:rgba(232,133,12,0.2);
+  --purple:#3D2C5E;
+  --purple-glow:rgba(61,44,94,0.25);
+  --coral:#FF6B6B;
+  --paper-white:#FBF7F0;
+  --sticky-yellow:#F0E8D8;
+  --sticky-pink:#F5E8E8;
+  --sticky-blue:#E8EEF5;
+  --sticky-purple:#EDE8F5;
+  --green:#58CC02;
+  --red:#E84855;
+}
+html{font-size:16px}
+body{
+  background-color:var(--bg);
+  background-image:radial-gradient(circle,rgba(255,255,255,0.04) 1px,transparent 1px);
+  background-size:22px 22px;
+  min-height:100vh;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans SC',sans-serif;
+  color:var(--text-dark);
+  padding:24px 16px 48px;
+  display:flex;
+  justify-content:center
+}
+#app{
+  max-width:620px;
+  width:100%;
+  position:relative
+}
+/* ---- header ---- */
+header{
+  text-align:center;
+  margin-bottom:20px;
+  position:relative;
+  padding-top:12px
+}
+.header-lamp{
+  width:72px;
+  height:72px;
+  margin:0 auto 8px;
+  display:block
+}
+header h1{
+  font-family:'ZCOOL KuaiLe',cursive;
+  font-size:2rem;
+  color:var(--paper-white);
+  letter-spacing:2px;
+  text-shadow:0 2px 0 rgba(0,0,0,0.3);
+  line-height:1.2
+}
+header .sub{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1rem;
+  color:var(--text-mid);
+  margin-top:2px;
+  letter-spacing:4px
+}
+.key-badge{
+  display:inline-block;
+  margin-top:8px;
+  padding:4px 14px;
+  border-radius:20px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.85rem;
+  cursor:pointer;
+  transition:all .2s;
+  border:2px dashed var(--text-mid);
+  color:var(--text-mid);
+  background:transparent
+}
+.key-badge:hover{border-color:var(--amber);color:var(--amber)}
+.key-badge.has-key{border-style:solid;border-color:var(--amber);color:var(--amber);background:var(--amber-glow)}
+/* ---- tabs ---- */
+.tab-bar{
+  display:flex;
+  justify-content:center;
+  gap:28px;
+  margin-bottom:20px;
+  position:relative;
+  flex-wrap:wrap;
+  padding-bottom:10px
+}
+.tab-btn{
+  font-family:'ZCOOL KuaiLe',cursive;
+  font-size:1.35rem;
+  background:none;
+  border:none;
+  padding:6px 12px;
+  cursor:pointer;
+  color:rgba(251,247,240,0.4);
+  position:relative;
+  transition:color .3s;
+  outline:none
+}
+.tab-btn.active{color:var(--paper-white)}
+.tab-underline{
+  position:absolute;
+  bottom:2px;
+  height:14px;
+  pointer-events:none;
+  z-index:1;
+  opacity:0.7;
+  transition:left .35s cubic-bezier(0.34,1.56,0.64,1)
+}
+/* ---- sections ---- */
+.section{display:none;animation:fadeIn .5s ease}
+.section.active{display:block}
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(18px) scale(0.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+/* ---- sticky card ---- */
+.sticky-card{
+  position:relative;
+  margin-bottom:24px;
+  padding:24px 22px 28px;
+  border-radius:2px;
+  transform-origin:center;
+  will-change:transform;
+  transition:transform .3s ease;
+  box-shadow:0 4px 20px rgba(0,0,0,0.15)
+}
+.sticky-card:hover{transform:rotate(0deg)!important}
+.sticky-card.yellow{background:var(--sticky-yellow)}
+.sticky-card.pink{background:var(--sticky-pink)}
+.sticky-card.blue{background:var(--sticky-blue)}
+.sticky-card.purple{background:var(--sticky-purple)}
+.sticky-card .rough-svg{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  pointer-events:none;
+  z-index:0
+}
+.sticky-card>*:not(.rough-svg):not(.tape):not(.deco-svg){
+  position:relative;z-index:1
+}
+/* tape */
+.tape{
+  position:absolute;
+  width:56px;
+  height:18px;
+  z-index:2;
+  pointer-events:none;
+  opacity:0.55;
+  border-radius:1px
+}
+.tape.tl{top:-8px;left:20px;transform:rotate(-4deg)}
+.tape.tr{top:-8px;right:20px;transform:rotate(5deg)}
+.tape.bl{bottom:-8px;left:20px;transform:rotate(3deg)}
+.tape.br{bottom:-8px;right:20px;transform:rotate(-5deg)}
+.tape.y{background:rgba(240,232,216,0.8)}
+.tape.p{background:rgba(245,232,232,0.8)}
+.tape.b{background:rgba(232,238,245,0.8)}
+.tape.v{background:rgba(237,232,245,0.8)}
+.tape.w{background:rgba(240,240,240,0.7)}
+/* params row */
+.params-row{
+  display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;position:relative;z-index:1
+}
+.param-item{flex:1;min-width:120px}
+.param-item label{
+  display:block;font-family:'Ma Shan Zheng',cursive;font-size:.85rem;
+  color:var(--text-mid);margin-bottom:4px
+}
+.param-item select,.param-item input{
+  width:100%;padding:8px 10px;
+  font-family:'Ma Shan Zheng',cursive;font-size:.9rem;
+  border:2px dashed var(--text-mid);border-radius:4px;
+  background:rgba(251,247,240,0.6);color:var(--text-dark);
+  outline:none;transition:border-color .2s;cursor:pointer
+}
+.param-item select:focus,.param-item input:focus{border-color:var(--amber);border-style:solid}
+/* result actions */
+.result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;position:relative;z-index:1}
+.result-actions .action-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:6px 14px;font-family:'Ma Shan Zheng',cursive;font-size:.9rem;
+  border:2px dashed var(--text-mid);border-radius:4px;
+  background:rgba(251,247,240,0.5);color:var(--text-dark);
+  cursor:pointer;transition:all .2s
+}
+.result-actions .action-btn:hover{border-color:var(--amber);border-style:solid}
+/* form elements */
+.sticky-card label{
+  display:block;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1.1rem;
+  color:var(--text-dark);
+  margin-bottom:8px
+}
+.sticky-card textarea{
+  width:100%;
+  padding:14px 16px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1.05rem;
+  border:2px solid rgba(0,0,0,0.12);
+  border-radius:4px;
+  background:rgba(251,247,240,0.7);
+  color:var(--text-dark);
+  resize:vertical;
+  min-height:80px;
+  outline:none;
+  transition:border-color .2s
+}
+.sticky-card textarea:focus{border-color:var(--amber)}
+/* rough button wrapper */
+.btn-wrap{
+  display:flex;
+  justify-content:center;
+  margin-top:16px;
+  position:relative;
+  min-height:52px;
+  align-items:center
+}
+.rough-btn-svg{
+  position:absolute;
+  pointer-events:none;
+  z-index:1;
+  width:auto;
+  height:52px
+}
+.rough-btn{
+  position:relative;
+  z-index:2;
+  appearance:none;
+  border:none;
+  background:transparent;
+  font-family:'ZCOOL KuaiLe',cursive;
+  font-size:1.25rem;
+  color:var(--text-dark);
+  padding:10px 40px;
+  cursor:pointer;
+  outline:none;
+  transition:transform .35s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap
+}
+.rough-btn:hover{transform:scale(1.07) rotate(-1.5deg)}
+.rough-btn:active{transform:scale(0.94) rotate(1.5deg)}
+.rough-btn:disabled{cursor:not-allowed;opacity:0.45}
+.rough-btn:disabled:hover{transform:none}
+/* deco-svg near buttons */
+.deco-svg{
+  position:absolute;
+  pointer-events:none;
+  z-index:3
+}
+.deco-svg.star-left{left:-30px;top:50%;transform:translateY(-50%)}
+.deco-svg.star-right{right:-30px;top:50%;transform:translateY(-50%)}
+.deco-svg.arrow-up{left:20px;top:-20px}
+.deco-svg.smiley{display:inline-block;vertical-align:middle;margin-left:6px}
+/* result area */
+.result-wrap{
+  margin-top:20px;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  gap:12px
+}
+.result-wrap.show{display:flex}
+.result-wrap img,.result-wrap video{
+  max-width:100%;
+  border-radius:3px;
+  box-shadow:0 6px 24px rgba(0,0,0,0.18)
+}
+.result-wrap .result-label{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.9rem;
+  color:var(--text-mid);
+  text-align:center;
+  max-width:100%
+}
+/* ---- progress bar (video) ---- */
+.progress-area{
+  margin-top:18px;
+  position:relative;
+  width:100%;
+  display:none
+}
+.progress-area.show{display:block}
+.progress-line-svg{
+  width:100%;
+  height:40px;
+  display:block;
+  pointer-events:none
+}
+.progress-status{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.95rem;
+  color:var(--text-mid);
+  text-align:center;
+  margin-top:4px;
+  min-height:1.4em
+}
+/* ---- gallery ---- */
+.gallery-section{
+  margin-top:8px
+}
+.gallery-section .gallery-title{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1.3rem;
+  color:var(--text-mid);
+  text-align:center;
+  margin-bottom:16px;
+  letter-spacing:2px;
+  position:relative
+}
+.gallery-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:20px;
+  justify-items:center
+}
+.polaroid{
+  background:#FBF7F0;
+  padding:10px 10px 42px;
+  border-radius:2px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.25);
+  width:100%;
+  max-width:220px;
+  position:relative;
+  transform-origin:center;
+  will-change:transform;
+  transition:transform .3s ease;
+  cursor:default
+}
+.polaroid:hover{transform:scale(1.02) rotate(0deg)!important}
+.polaroid img,.polaroid video{
+  width:100%;
+  display:block;
+  border-radius:1px
+}
+.polaroid .caption{
+  position:absolute;
+  bottom:10px;
+  left:10px;
+  right:10px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.85rem;
+  color:var(--text-dark);
+  text-align:center;
+  line-height:1.3;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap
+}
+.polaroid .del-btn{
+  position:absolute;
+  top:-8px;
+  right:-8px;
+  width:26px;
+  height:26px;
+  border-radius:50%;
+  background:var(--red);
+  color:#fff;
+  border:none;
+  font-size:1rem;
+  cursor:pointer;
+  font-family:'Ma Shan Zheng',cursive;
+  line-height:26px;
+  text-align:center;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  z-index:5;
+  opacity:0;
+  transition:opacity .2s
+}
+.polaroid:hover .del-btn{opacity:1}
+.gallery-empty{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1rem;
+  color:rgba(123,120,117,0.5);
+  text-align:center;
+  padding:32px 0;
+  grid-column:1/-1
+}
+/* ---- api key modal ---- */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.65);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+  padding:20px
+}
+.modal-overlay.show{display:flex}
+.modal-bubble{
+  position:relative;
+  background:var(--sticky-yellow);
+  max-width:400px;
+  width:100%;
+  padding:28px 24px 24px;
+  z-index:101;
+  animation:modalPop .4s cubic-bezier(0.34,1.56,0.64,1)
+}
+@keyframes modalPop{
+  from{opacity:0;transform:scale(0.88) translateY(20px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+.modal-bubble .bubble-arrow{
+  position:absolute;
+  top:-14px;
+  left:50%;
+  transform:translateX(-50%);
+  width:0;height:0;
+  border-left:14px solid transparent;
+  border-right:14px solid transparent;
+  border-bottom:14px solid var(--sticky-yellow);
+  z-index:102
+}
+.modal-bubble .rough-svg{
+  position:absolute;
+  top:0;left:0;
+  width:100%;height:100%;
+  pointer-events:none;
+  z-index:0
+}
+.modal-bubble>*:not(.rough-svg):not(.bubble-arrow){
+  position:relative;z-index:1
+}
+.modal-bubble h3{
+  font-family:'ZCOOL KuaiLe',cursive;
+  font-size:1.4rem;
+  text-align:center;
+  margin-bottom:16px;
+  color:var(--text-dark)
+}
+.modal-bubble p{
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.95rem;
+  color:var(--text-mid);
+  text-align:center;
+  margin-bottom:14px
+}
+.modal-bubble input{
+  width:100%;
+  padding:12px 14px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:1rem;
+  border:2px solid rgba(0,0,0,0.12);
+  border-radius:4px;
+  background:rgba(251,247,240,0.7);
+  color:var(--text-dark);
+  outline:none;
+  margin-bottom:14px
+}
+.modal-bubble input:focus{border-color:var(--amber)}
+.modal-bubble .btn-wrap{margin-top:0}
+/* ---- footer ---- */
+footer{
+  text-align:center;
+  margin-top:32px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.95rem;
+  color:rgba(123,120,117,0.5);
+  letter-spacing:2px;
+  line-height:1.6
+}
+footer .deco-wrap{
+  display:inline-block;
+  position:relative
+}
+footer .deco-wrap .smiley-svg{
+  display:inline-block;
+  width:20px;
+  height:20px;
+  vertical-align:middle;
+  margin:0 6px
+}
+/* ---- toast ---- */
+.toast{
+  position:fixed;
+  bottom:30px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,0.85);
+  color:#fff;
+  padding:10px 24px;
+  border-radius:20px;
+  font-family:'Ma Shan Zheng',cursive;
+  font-size:.95rem;
+  z-index:200;
+  opacity:0;
+  transition:opacity .4s;
+  pointer-events:none;
+  white-space:nowrap
+}
+.toast.show{opacity:1}
+/* ---- loading state for images ---- */
+.result-wrap img.loading{
+  background:#ddd;
+  min-height:200px
+}
+/* ---- responsive ---- */
+@media(max-width:480px){
+  body{padding:16px 10px 32px}
+  header h1{font-size:1.7rem}
+  .tab-btn{font-size:1.15rem}
+  .tab-bar{gap:18px}
+  .sticky-card{padding:18px 16px 22px}
+  .sticky-card textarea{font-size:1rem}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px}
+  .polaroid{padding:6px 6px 34px}
+  .deco-svg.star-left{display:none}
+  .deco-svg.star-right{display:none}
+}
+@media(min-width:768px){
+  #app{max-width:700px}
+  .gallery-grid{grid-template-columns:repeat(3,1fr)}
+}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🧞 <span>Genie</span></h1>
-  <span class="badge">● Agnes AI</span>
-</header>
+<div id="app">
 
-<div class="container">
+  <!-- ===== HEADER ===== -->
+  <header>
+    <svg class="header-lamp" id="lampIcon" viewBox="0 0 80 80" fill="none"></svg>
+    <h1>Genie AI 创作平台</h1>
+    <div class="sub">AI 图片 & 视频生成工具</div>
+    <div class="key-badge has-key" id="keyBadge">⚡ 本地服务器</div>
+  </header>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" data-mode="image">
-      🖼️ 图片生成
-    </button>
-    <button class="tab" data-mode="video">
-      🎬 视频生成
-    </button>
-  </div>
+  <!-- ===== TABS ===== -->
+  <nav class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="image">图片生成</button>
+    <button class="tab-btn" data-tab="video">视频生成</button>
+    <svg class="tab-underline" id="tabUnderline" width="0" height="14" viewBox="0 0 120 14" style="display:none"></svg>
+  </nav>
 
-  <!-- Image Mode -->
-  <div id="panel-image" class="mode-panel">
-    <div class="card">
-      <div class="card-title">✏️ 描述你想生成的画面</div>
-      <textarea id="img-prompt" placeholder="例如：一座漂浮在云雾峡谷上方的发光城市，日出时分，电影级写实风格，广角构图，柔和的金色光线"></textarea>
-      <div class="params">
-        <div class="param">
+  <!-- ===== IMAGE GENERATION ===== -->
+  <section class="section active" id="secImage">
+    <div class="sticky-card yellow" id="imgCard">
+      <div class="tape tl y"></div>
+      <div class="tape tr y"></div>
+      <label>
+        描述你想要的画面
+        <svg class="deco-svg arrow-up" width="24" height="20" viewBox="0 0 24 20" style="position:absolute;left:auto;right:-8px;top:-18px"></svg>
+      </label>
+      <textarea id="imgPrompt" placeholder="例如：一只可爱的橘猫坐在书堆上，周围是飘落的樱花，水彩风格..." rows="3"></textarea>
+      <div class="params-row">
+        <div class="param-item">
           <label>模型</label>
-          <select id="img-model">
-            <option value="agnes-image-2.1-flash">2.1 Flash — 文生图（高信息密度）</option>
-            <option value="agnes-image-2.0-flash">2.0 Flash — 图生图 / 编辑</option>
+          <select id="imgModel">
+            <option value="agnes-image-2.1-flash" selected>2.1 Flash · 文生图</option>
+            <option value="agnes-image-2.0-flash">2.0 Flash · 图生图</option>
           </select>
         </div>
-        <div class="param">
+        <div class="param-item">
           <label>尺寸</label>
-          <select id="img-size">
-            <option value="1024x1024">1024 × 1024 (方形)</option>
-            <option value="1024x768">1024 × 768 (横版)</option>
-            <option value="768x1024">768 × 1024 (竖版)</option>
-            <option value="2048x2048">2048 × 2048 (高清方形)</option>
+          <select id="imgSize">
+            <option value="1024x1024">1024×1024 方形</option>
+            <option value="1024x768">1024×768 横版</option>
+            <option value="768x1024">768×1024 竖版</option>
+            <option value="2048x2048">2048×2048 高清</option>
           </select>
         </div>
-        <div class="param" id="img-ref-group" style="display:none">
-          <label>参考图片 URL（可选）</label>
-          <input type="url" id="img-ref-url" placeholder="https://example.com/image.png">
+        <div class="param-item" id="imgRefGroup" style="display:none">
+          <label>参考图 URL</label>
+          <input type="url" id="imgRefUrl" placeholder="https://...">
         </div>
       </div>
-      <button class="btn btn-primary" id="btn-generate-image">
-        ✨ 生成图片
-      </button>
+      <div class="btn-wrap" id="imgBtnWrap">
+        <svg class="rough-btn-svg" id="imgBtnSvg" height="52"></svg>
+        <button class="rough-btn" id="imgGenBtn">生成图片</button>
+        <svg class="deco-svg star-right" width="24" height="24" viewBox="0 0 24 24" style="right:-32px"></svg>
+      </div>
+      <div class="result-wrap" id="imgResult">
+        <div id="imgResultContent"></div>
+        <div class="result-label" id="imgResultLabel"></div>
+        <div class="result-actions" id="imgResultActions" style="display:none"></div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Video Mode -->
-  <div id="panel-video" class="mode-panel" style="display:none">
-    <div class="card">
-      <div class="card-title">🎥 描述你想生成的视频</div>
-      <textarea id="vid-prompt" placeholder="例如：电影级镜头，一只猫在日落海滩上漫步，镜头缓慢平移，温暖的金色光线"></textarea>
-      <div class="params">
-        <div class="param">
+  <!-- ===== VIDEO GENERATION ===== -->
+  <section class="section" id="secVideo">
+    <div class="sticky-card blue" id="vidCard">
+      <div class="tape tl b"></div>
+      <div class="tape tr b"></div>
+      <label>描述你想要的动态画面</label>
+      <textarea id="vidPrompt" placeholder="例如：日落时分的海滩，海浪轻轻拍打沙滩，延时摄影..." rows="3"></textarea>
+      <div class="params-row">
+        <div class="param-item">
           <label>时长</label>
-          <select id="vid-duration">
+          <select id="vidDuration">
             <option value="81">~3 秒 (81帧)</option>
             <option value="121" selected>~5 秒 (121帧)</option>
             <option value="161">~7 秒 (161帧)</option>
@@ -272,411 +609,625 @@
             <option value="441">~18 秒 (441帧)</option>
           </select>
         </div>
-        <div class="param">
+        <div class="param-item">
           <label>帧率</label>
-          <select id="vid-fps">
+          <select id="vidFps">
             <option value="24" selected>24 fps</option>
             <option value="30">30 fps</option>
           </select>
         </div>
-        <div class="param">
+        <div class="param-item">
           <label>分辨率</label>
-          <select id="vid-size">
-            <option value="1152x768">1152 × 768</option>
-            <option value="768x1152">768 × 1152 (竖版)</option>
+          <select id="vidSize">
+            <option value="1152x768">1152×768</option>
+            <option value="768x1152">768×1152 竖版</option>
           </select>
         </div>
-        <div class="param">
-          <label>起始图片 URL（可选）</label>
-          <input type="url" id="vid-image-url" placeholder="https://example.com/frame.png">
+        <div class="param-item">
+          <label>起始图 URL</label>
+          <input type="url" id="vidImageUrl" placeholder="可选 https://...">
         </div>
       </div>
-      <button class="btn btn-primary" id="btn-generate-video">
-        🎬 生成视频
-      </button>
-    </div>
-  </div>
-
-  <!-- Result Area -->
-  <div class="result" id="result">
-    <div class="result-header">
-      <span id="result-title">生成结果</span>
-      <span id="result-status"></span>
-    </div>
-    <div class="result-body" id="result-body">
-      <div class="progress-wrap" id="progress-wrap" style="display:none">
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-        <span class="progress-text" id="progress-text">0%</span>
+      <div class="btn-wrap" id="vidBtnWrap">
+        <svg class="rough-btn-svg" id="vidBtnSvg" height="52"></svg>
+        <button class="rough-btn" id="vidGenBtn">生成视频</button>
+        <svg class="deco-svg star-right" width="24" height="24" viewBox="0 0 24 24" style="right:-32px"></svg>
       </div>
-      <div id="result-content"></div>
-    </div>
-  </div>
-
-  <!-- Gallery -->
-  <div class="card">
-    <div class="card-title">🖼️ 作品画廊 <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text-dim)">（点击预览，自动保存）</span></div>
-    <div class="gallery" id="gallery">
-      <div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">
-        还没有作品，开始创作吧 ✨
+      <div class="progress-area" id="progressArea">
+        <svg class="progress-line-svg" id="progressSvg" viewBox="0 0 500 40" preserveAspectRatio="none"></svg>
+        <div class="progress-status" id="progressStatus">初始化中 ...</div>
+      </div>
+      <div class="result-wrap" id="vidResult">
+        <div id="vidResultContent"></div>
+        <div class="result-label" id="vidResultLabel"></div>
+        <div class="result-actions" id="vidResultActions" style="display:none"></div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <!-- ===== GALLERY ===== -->
+  <section class="gallery-section">
+    <div class="gallery-title">
+      <span>作品画廊</span>
+      <svg width="18" height="18" viewBox="0 0 18 18" style="display:inline-block;vertical-align:middle;margin-left:6px" id="galleryDeco"></svg>
+    </div>
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="gallery-empty">还没有作品，快去创作吧 ~</div>
+    </div>
+  </section>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    © 2026 nulllab co. · Generated by DS + Claude
+    <span class="deco-wrap">
+      <svg class="smiley-svg" viewBox="0 0 24 24" id="footerSmiley"></svg>
+    </span>
+    Genie AI ~
+  </footer>
 
 </div>
 
-<footer>
-  © 2026 nulllab co. · 基于 Agnes AI API 驱动 · Generated by DS + Claude
-</footer>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
 
 <script>
-// ============================================================
-// Global State
-// ============================================================
-const STATE = {
-  mode: 'image',
-  generating: false,
-  gallery: JSON.parse(localStorage.getItem('gallery') || '[]'),
-  pollTimer: null,
-};
+(function(){
+'use strict';
 
-// ============================================================
-// Mode Switching
-// ============================================================
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    STATE.mode = tab.dataset.mode;
-    document.getElementById('panel-image').style.display = STATE.mode === 'image' ? 'block' : 'none';
-    document.getElementById('panel-video').style.display = STATE.mode === 'video' ? 'block' : 'none';
-    hideResult();
+/* ===================== CONFIG ===================== */
+const API_BASE = '/api';
+const GALLERY_KEY = 'genie_gallery';
+const CARD_ROTATIONS = [0.8,-0.6,1.2,-1.0,0.5,-0.9,1.1,-0.7];
+
+/* ===================== STATE ===================== */
+let currentTab = 'image';
+let isGenerating = false;
+let gallery = [];
+
+try {
+  const saved = localStorage.getItem(GALLERY_KEY);
+  if (saved) gallery = JSON.parse(saved);
+} catch(e){}
+
+/* ===================== DOM REFS ===================== */
+const $ = id => document.getElementById(id);
+const lampIcon    = $('lampIcon');
+const tabBtns     = document.querySelectorAll('.tab-btn');
+const tabUnderline= $('tabUnderline');
+const secImage    = $('secImage');
+const secVideo    = $('secVideo');
+const imgCard     = $('imgCard');
+const imgPrompt   = $('imgPrompt');
+const imgModel    = $('imgModel');
+const imgSize     = $('imgSize');
+const imgRefGroup = $('imgRefGroup');
+const imgRefUrl   = $('imgRefUrl');
+const imgGenBtn   = $('imgGenBtn');
+const imgBtnSvg   = $('imgBtnSvg');
+const imgResult   = $('imgResult');
+const imgResultContent = $('imgResultContent');
+const imgResultLabel   = $('imgResultLabel');
+const imgResultActions = $('imgResultActions');
+const vidCard     = $('vidCard');
+const vidPrompt   = $('vidPrompt');
+const vidDuration = $('vidDuration');
+const vidFps      = $('vidFps');
+const vidSize     = $('vidSize');
+const vidImageUrl = $('vidImageUrl');
+const vidGenBtn   = $('vidGenBtn');
+const vidBtnSvg   = $('vidBtnSvg');
+const vidResult   = $('vidResult');
+const vidResultContent = $('vidResultContent');
+const vidResultLabel   = $('vidResultLabel');
+const vidResultActions = $('vidResultActions');
+const progressArea= $('progressArea');
+const progressSvg = $('progressSvg');
+const progressStatus = $('progressStatus');
+const galleryGrid = $('galleryGrid');
+const galleryDeco = $('galleryDeco');
+const footerSmiley= $('footerSmiley');
+const keyBadge    = $('keyBadge');
+const toast       = $('toast');
+
+/* ===================== UTILITY ===================== */
+function rand(min,max){return Math.random()*(max-min)+min}
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+
+let toastTimer;
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 3000);
+}
+
+function downloadMedia(url, type){
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = type==='image' ? 'genie-image.png' : 'genie-video.mp4';
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ===================== ROUGH.JS HELPERS ===================== */
+function addRoughRect(svgEl, x, y, w, h, opts){
+  const rc = rough.svg(svgEl);
+  const node = rc.rectangle(x, y, w, h, {
+    stroke: opts.stroke||'#888',
+    strokeWidth: opts.strokeWidth||3,
+    roughness: opts.roughness||2.5,
+    fill: opts.fill||'transparent',
+    fillStyle: opts.fillStyle||'solid',
+    fillWeight: opts.fillWeight||0.6,
+    bowing: opts.bowing||2,
+    seed: opts.seed||randInt(100,9999)
   });
-});
+  svgEl.appendChild(node);
+}
 
-// Image model switch → show/hide ref image input
-document.getElementById('img-model').addEventListener('change', function() {
-  document.getElementById('img-ref-group').style.display =
-    this.value === 'agnes-image-2.0-flash' ? 'block' : 'none';
-});
+function applyRoughBorder(container, opts){
+  const existing = container.querySelector('.rough-svg');
+  if(existing) existing.remove();
 
-// ============================================================
-// API Helpers
-// ============================================================
-async function apiPost(path, body) {
-  const res = await fetch(path, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  const w = container.offsetWidth;
+  const h = container.offsetHeight;
+  if(w<10||h<10) return;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','rough-svg');
+  svg.setAttribute('width',w);
+  svg.setAttribute('height',h);
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+  svg.style.position='absolute';
+  svg.style.top='0';
+  svg.style.left='0';
+  svg.style.pointerEvents='none';
+  svg.style.zIndex='0';
+
+  const pos = opts.padding||2;
+  addRoughRect(svg, pos, pos, w-pos*2, h-pos*2, opts);
+
+  if(container.style.position!=='relative'&&container.style.position!=='absolute'){
+    container.style.position='relative';
+  }
+  container.insertBefore(svg, container.firstChild);
+}
+
+function drawRoughButton(svgEl, opts){
+  const w = parseInt(svgEl.getAttribute('width'))||200;
+  const h = parseInt(svgEl.getAttribute('height'))||52;
+  svgEl.innerHTML='';
+  addRoughRect(svgEl, 2, 2, w-4, h-4, {
+    stroke: opts.stroke||'var(--text-dark)',
+    strokeWidth: opts.strokeWidth||3.2,
+    roughness: opts.roughness||3,
+    fill: opts.fill||'var(--amber)',
+    fillStyle: opts.fillStyle||'solid',
+    fillWeight: 0.5,
+    bowing: 2.5,
+    seed: opts.seed||randInt(1000,9999)
   });
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data.error || data));
-  return data;
 }
 
-async function apiGet(path) {
-  const res = await fetch(path);
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error?.message || JSON.stringify(data.error || data));
-  return data;
+/* ===================== DECORATIVE ELEMENTS ===================== */
+function drawStar(svgEl, cx, cy, r, opts){
+  const rc = rough.svg(svgEl);
+  const pts = [];
+  for(let i=0;i<10;i++){
+    const angle = (i*Math.PI/5) - Math.PI/2;
+    const rad = i%2===0 ? r : r*0.4;
+    pts.push([cx+Math.cos(angle)*rad, cy+Math.sin(angle)*rad]);
+  }
+  const d = pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ')+' Z';
+  svgEl.appendChild(rc.path(d, {
+    stroke: opts.stroke||'#E8850C', strokeWidth:opts.strokeWidth||2.5,
+    roughness: opts.roughness||2.5,
+    fill: opts.fill||'rgba(255,215,0,0.3)',
+    fillStyle: opts.fillStyle||'solid',
+    bowing: opts.bowing||2,
+    seed: opts.seed||randInt(100,9999)
+  }));
 }
 
-// ============================================================
-// Toast
-// ============================================================
-function toast(msg, isError = false) {
-  const el = document.createElement('div');
-  el.className = 'toast' + (isError ? ' error' : '');
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(() => { el.remove(); }, 3500);
+function drawArrow(svgEl, opts){
+  const rc = rough.svg(svgEl);
+  const x1=opts.x1||0, y1=opts.y1||0, x2=opts.x2||20, y2=opts.y2||-10;
+  svgEl.appendChild(rc.linearPath([[x1,y1],[x2,y2]], {
+    stroke: opts.stroke||'var(--amber)',
+    strokeWidth: opts.strokeWidth||2.5, roughness: opts.roughness||2.5,
+    bowing: opts.bowing||2, seed: opts.seed||randInt(100,9999)
+  }));
+  const ang = Math.atan2(y2-y1, x2-x1);
+  const hs = 5;
+  const h1x = x2 - hs*Math.cos(ang-Math.PI/6);
+  const h1y = y2 - hs*Math.sin(ang-Math.PI/6);
+  const h2x = x2 - hs*Math.cos(ang+Math.PI/6);
+  const h2y = y2 - hs*Math.sin(ang+Math.PI/6);
+  svgEl.appendChild(rc.path(`M${x2} ${y2} L${h1x} ${h1y} M${x2} ${y2} L${h2x} ${h2y}`, {
+    stroke: opts.stroke||'var(--amber)',
+    strokeWidth: opts.strokeWidth||2.5, roughness: opts.roughness||2.5,
+    bowing: opts.bowing||2, seed: (opts.seed||100)+1
+  }));
 }
 
-// ============================================================
-// Result UI
-// ============================================================
-function showResult(title) {
-  const el = document.getElementById('result');
-  el.classList.add('show');
-  document.getElementById('result-title').textContent = title;
-  document.getElementById('result-status').innerHTML = '';
-  document.getElementById('result-content').innerHTML = '';
-  document.getElementById('progress-wrap').style.display = 'none';
-  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function drawSmiley(svgEl, opts){
+  const rc = rough.svg(svgEl);
+  const cx=12, cy=12, r=10, s=opts.stroke||'rgba(123,120,117,0.5)';
+  svgEl.appendChild(rc.circle(cx, cy, r*2, {stroke:s, strokeWidth:2.5, roughness:2.5, fill:'transparent', bowing:2, seed:opts.seed||5001}));
+  svgEl.appendChild(rc.circle(cx-3.5, cy-2, 1.8, {stroke:s, strokeWidth:2, roughness:2, fill:'transparent', seed:(opts.seed||5001)+1}));
+  svgEl.appendChild(rc.circle(cx+3.5, cy-2, 1.8, {stroke:s, strokeWidth:2, roughness:2, fill:'transparent', seed:(opts.seed||5001)+2}));
+  svgEl.appendChild(rc.path(`M${cx-4} ${cy+2} Q${cx} ${cy+6} ${cx+4} ${cy+2}`, {stroke:s, strokeWidth:2, roughness:2, fill:'transparent', bowing:2, seed:(opts.seed||5001)+3}));
 }
 
-function hideResult() {
-  document.getElementById('result').classList.remove('show');
-  if (STATE.pollTimer) { clearTimeout(STATE.pollTimer); STATE.pollTimer = null; }
+/* ===================== LAMP ICON ===================== */
+function drawLamp(){
+  const rc = rough.svg(lampIcon);
+  lampIcon.innerHTML='';
+  lampIcon.appendChild(rc.path('M22 56 C22 56,18 50,20 44 C22 38,24 34,26 30 L54 30 C56 34,58 38,60 44 C62 50,58 56,58 56 Z',{
+    stroke:'#E8850C', strokeWidth:3.5, roughness:2.8, fill:'rgba(232,133,12,0.25)', fillStyle:'solid', bowing:3, seed:1111
+  }));
+  lampIcon.appendChild(rc.path('M58 40 L70 34 L72 38 L60 46 Z',{
+    stroke:'#E8850C', strokeWidth:3, roughness:2.5, fill:'rgba(232,133,12,0.15)', fillStyle:'hachure', bowing:2.5, seed:2222
+  }));
+  lampIcon.appendChild(rc.path('M22 44 C14 42,10 34,14 28 C18 22,28 24,26 30',{
+    stroke:'#E8850C', strokeWidth:3, roughness:2.8, fill:'none', bowing:3, seed:3333
+  }));
+  lampIcon.appendChild(rc.ellipse(40,30,28,8,{
+    stroke:'#E8850C', strokeWidth:3, roughness:2.5, fill:'none', bowing:2.5, seed:4444
+  }));
+  for(let i=0;i<3;i++){
+    const cx=34+i*14+rand(-4,4), cy=20-i*8+rand(-3,3);
+    lampIcon.appendChild(rc.circle(cx,cy,12+rand(-3,3),{
+      stroke:'rgba(232,133,12,0.25)', strokeWidth:2.5, roughness:3,
+      fill:'rgba(232,133,12,0.08)', fillStyle:'zigzag', bowing:3, seed:5555+i
+    }));
+  }
+  const sp = [[68,18],[10,12],[76,26],[16,28]];
+  sp.forEach((p,i)=>drawStar(lampIcon, p[0], p[1], i===0?6:4, {
+    stroke:'#E8850C', strokeWidth:2, roughness:2, fill:'rgba(232,133,12,0.25)', fillStyle:'solid', seed:6666+i
+  }));
 }
 
-function setStatus(html) {
-  document.getElementById('result-status').innerHTML = html;
+/* ===================== PROGRESS BAR ===================== */
+function drawProgress(value){
+  const rc = rough.svg(progressSvg);
+  progressSvg.innerHTML='';
+  const w=500, h=40;
+  const filledW = Math.max(4, (w-40)*Math.min(Math.max(value,0),1));
+  const triX = 20+filledW;
+
+  progressSvg.appendChild(rc.line(20, h/2, w-20, h/2, {
+    stroke:'rgba(0,0,0,0.12)', strokeWidth:6, roughness:2.5, bowing:2, seed:8000
+  }));
+  progressSvg.appendChild(rc.line(20, h/2, 20+filledW, h/2, {
+    stroke:'var(--amber)', strokeWidth:8, roughness:2.5, bowing:2, seed:8001
+  }));
+  progressSvg.appendChild(rc.path(`M${triX-8} ${h/2-10} L${triX+8} ${h/2-10} L${triX} ${h/2+6} Z`, {
+    stroke:'var(--amber)', strokeWidth:2.5, roughness:2,
+    fill:'var(--amber)', fillStyle:'solid', bowing:2, seed:8002
+  }));
+
+  if(value>0.2 && value<0.8){
+    const label = ['差不多了...','快好了！','再坚持一下~','马上就好~'];
+    progressStatus.textContent = label[Math.min(Math.floor((value-0.2)/0.15), label.length-1)] || '生成中...';
+  } else if(value>=0.8 && value<1){
+    progressStatus.textContent = '即将完成!';
+  } else if(value>=1){
+    progressStatus.textContent = '完成!';
+  }
 }
 
-function setProgress(pct) {
-  const wrap = document.getElementById('progress-wrap');
-  wrap.style.display = 'flex';
-  document.getElementById('progress-fill').style.width = pct + '%';
-  document.getElementById('progress-text').textContent = Math.round(pct) + '%';
+/* ===================== TABS ===================== */
+function switchTab(tab){
+  currentTab=tab;
+  tabBtns.forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===tab));
+  secImage.classList.toggle('active',tab==='image');
+  secVideo.classList.toggle('active',tab==='video');
+  requestAnimationFrame(()=>{
+    updateTabUnderline(tab);
+    if(tab==='image'){
+      applyRoughBorder(imgCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#F0E8D8',fillStyle:'solid',seed:1001});
+    } else {
+      applyRoughBorder(vidCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#E8EEF5',fillStyle:'solid',seed:1002});
+    }
+  });
 }
 
-function setContent(html) {
-  document.getElementById('progress-wrap').style.display = 'none';
-  document.getElementById('result-content').innerHTML = html;
+function updateTabUnderline(tab){
+  const activeBtn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if(!activeBtn) return;
+  const barRect = document.querySelector('.tab-bar').getBoundingClientRect();
+  const btnRect = activeBtn.getBoundingClientRect();
+  const labelW = Math.max(activeBtn.offsetWidth-8, 60);
+  const left = btnRect.left - barRect.left + (btnRect.width - labelW)/2;
+
+  tabUnderline.setAttribute('width', labelW);
+  tabUnderline.setAttribute('viewBox', `0 0 ${labelW} 14`);
+  tabUnderline.style.display='block';
+  tabUnderline.style.width=labelW+'px';
+  tabUnderline.style.left=left+'px';
+
+  const rc = rough.svg(tabUnderline);
+  tabUnderline.innerHTML='';
+  // highlighter-style swipe
+  tabUnderline.appendChild(rc.rectangle(0, 3, labelW, 10, {
+    stroke:'var(--amber)', strokeWidth:2.5, roughness:3.5,
+    fill:'var(--amber)', fillStyle:'solid', fillWeight:0.4, bowing:3, seed:7001
+  }));
+  // overlay for uneven highlighter effect
+  tabUnderline.appendChild(rc.rectangle(-2, 5, labelW+4, 5, {
+    stroke:'none', roughness:2, fill:'rgba(232,133,12,0.3)', fillStyle:'hachure', fillWeight:0.3, bowing:2.5, seed:7002
+  }));
 }
 
-// ============================================================
-// Gallery
-// ============================================================
-function addToGallery(type, url, prompt) {
-  STATE.gallery.unshift({ type, url, prompt, time: Date.now() });
-  if (STATE.gallery.length > 50) STATE.gallery.length = 50; // keep max 50
-  localStorage.setItem('gallery', JSON.stringify(STATE.gallery));
+/* ===================== GALLERY ===================== */
+function saveGallery(){
+  try{localStorage.setItem(GALLERY_KEY,JSON.stringify(gallery))}catch(e){}
+}
+
+function renderGallery(){
+  galleryGrid.innerHTML='';
+  if(!gallery.length){
+    galleryGrid.innerHTML='<div class="gallery-empty">还没有作品，快去创作吧 ~</div>';
+    return;
+  }
+  gallery.forEach((item,idx)=>{
+    const div = document.createElement('div');
+    div.className='polaroid';
+    div.style.transform=`rotate(${rand(-2.5,2.5)}deg)`;
+    if(item.type==='video'){
+      const vid = document.createElement('video');
+      vid.src=item.url; vid.controls=true; vid.muted=true; vid.playsInline=true; vid.preload='metadata';
+      div.appendChild(vid);
+    } else {
+      const img = document.createElement('img');
+      img.src=item.url; img.alt=item.prompt||''; img.loading='lazy';
+      div.appendChild(img);
+    }
+    const cap = document.createElement('div');
+    cap.className='caption';
+    cap.textContent=item.prompt||'untitled';
+    div.appendChild(cap);
+    const del = document.createElement('button');
+    del.className='del-btn';
+    del.textContent='x';
+    del.addEventListener('click',e=>{e.stopPropagation();gallery.splice(idx,1);saveGallery();renderGallery()});
+    div.appendChild(del);
+    galleryGrid.appendChild(div);
+  });
+}
+
+function addToGallery(item){
+  gallery.unshift({...item,ts:Date.now()});
+  if(gallery.length>50) gallery.pop();
+  saveGallery();
   renderGallery();
 }
 
-function renderGallery() {
-  const el = document.getElementById('gallery');
-  if (STATE.gallery.length === 0) {
-    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim);grid-column:1/-1">还没有作品，开始创作吧 ✨</div>';
-    return;
+/* ===================== API CALLS ===================== */
+async function apiFetch(path, options={}){
+  const headers = {'Content-Type':'application/json', ...options.headers};
+  const res = await fetch(`${API_BASE}${path}`, {...options, headers});
+  const data = await res.json();
+  if(!res.ok || data.error){
+    const msg = data.error?.message || data.error || '请求失败';
+    throw new Error(typeof msg==='string'?msg:JSON.stringify(msg));
   }
-  el.innerHTML = STATE.gallery.map((item, i) => `
-    <div class="gallery-item" onclick="previewGalleryItem(${i})">
-      ${item.type === 'image'
-        ? `<img src="${item.url}" alt="${item.prompt}" loading="lazy">`
-        : `<video src="${item.url}" muted></video>`
-      }
-      <div class="overlay">${item.type === 'image' ? '🖼️' : '🎬'} ${item.prompt.slice(0, 30)}...</div>
-    </div>
-  `).join('');
+  return data;
 }
 
-function previewGalleryItem(i) {
-  const item = STATE.gallery[i];
-  showResult(item.type === 'image' ? '画廊预览 — 图片' : '画廊预览 — 视频');
-  setStatus(`<span style="font-size:12px;color:var(--text-dim)">${item.prompt.slice(0,60)}</span>`);
-  const media = item.type === 'image'
-    ? `<img src="${item.url}" alt="${item.prompt}">`
-    : `<video src="${item.url}" controls autoplay loop></video>`;
-  setContent(media + `<div style="margin-top:12px"><button class="btn btn-sm" onclick="downloadMedia('${item.url}', '${item.type}')">⬇ 下载</button></div>`);
+async function generateImage(prompt, model, size, refUrl){
+  const m = model || 'agnes-image-2.1-flash';
+  const body = {model:m, prompt, n:1, size:size||'1024x1024'};
+  if(m==='agnes-image-2.0-flash' && refUrl){
+    body.extra_body = {tags:['img2img'], image:[refUrl], response_format:'url'};
+  }
+  const data = await apiFetch('/images/generations',{method:'POST',body:JSON.stringify(body)});
+  // proxy wraps response: {success, imageUrl}
+  return data.imageUrl || data.data?.[0]?.url || data.url || null;
 }
 
-renderGallery();
-
-// ============================================================
-// Download
-// ============================================================
-function downloadMedia(url, type) {
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = type === 'image' ? 'ai-image.png' : 'ai-video.mp4';
-  a.target = '_blank';
-  a.rel = 'noopener';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+async function generateVideo(prompt, numFrames, frameRate, width, height, imageUrl){
+  const body = {
+    model:'agnes-video-v2.0', prompt,
+    num_frames: numFrames, frame_rate: frameRate,
+    width, height
+  };
+  if(imageUrl) body.image = imageUrl;
+  const data = await apiFetch('/videos',{method:'POST',body:JSON.stringify(body)});
+  // proxy wraps: {success, taskId}
+  const taskId = data.taskId || data.id || data.task_id;
+  if(!taskId) throw new Error('无法获取任务 ID');
+  return taskId;
 }
 
-// ============================================================
-// Generate Image
-// ============================================================
-document.getElementById('btn-generate-image').addEventListener('click', async () => {
-  if (STATE.generating) return;
-  const prompt = document.getElementById('img-prompt').value.trim();
-  if (!prompt) { toast('请输入图片描述', true); return; }
+async function pollVideoStatus(taskId){
+  // proxy wraps: {success, status, progress, videoUrl}
+  return apiFetch(`/videos/${taskId}`);
+}
 
-  STATE.generating = true;
-  const btn = document.getElementById('btn-generate-image');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> 生成中...';
-  showResult('🖼️ 图片生成中...');
-  setStatus('<span class="status-badge status-in_progress">生成中</span>');
-  setProgress(30);
+/* ===================== HANDLE GENERATION ===================== */
+function buildResultActions(url, type){
+  return `
+    <button class="action-btn" onclick="downloadMedia('${url.replace(/'/g,"\\'")}','${type}')">⬇ 下载</button>
+    <button class="action-btn" onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}').then(()=>showToast('链接已复制'))">📋 复制链接</button>
+  `;
+}
 
-  try {
-    const model = document.getElementById('img-model').value;
-    const size = document.getElementById('img-size').value;
-    const body = { model, prompt, size };
+async function handleImageGen(){
+  const prompt = imgPrompt.value.trim();
+  if(!prompt){showToast('请输入描述文字');return}
+  if(isGenerating) return;
+  isGenerating=true;
+  imgGenBtn.disabled=true;
+  imgGenBtn.textContent='生成中 ...';
+  imgResult.classList.remove('show');
+  imgResultContent.innerHTML='';
+  imgResultLabel.textContent='';
+  imgResultActions.style.display='none';
 
-    // For img2img model, add ref image
-    if (model === 'agnes-image-2.0-flash') {
-      const refUrl = document.getElementById('img-ref-url').value.trim();
-      if (refUrl) {
-        body.extra_body = { tags: ['img2img'], image: [refUrl], response_format: 'url' };
+  try{
+    const model = imgModel.value;
+    const size = imgSize.value;
+    const refUrl = imgRefUrl.value.trim();
+    const url = await generateImage(prompt, model, size, refUrl);
+    if(!url) throw new Error('没有返回图片');
+    const img = document.createElement('img');
+    img.src=url; img.alt=prompt; img.loading='lazy';
+    imgResultContent.appendChild(img);
+    imgResultLabel.textContent='"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
+    imgResultActions.innerHTML = buildResultActions(url, 'image');
+    imgResultActions.style.display = 'flex';
+    imgResult.classList.add('show');
+    addToGallery({type:'image',url,prompt});
+    showToast('图片生成成功!');
+  }catch(e){
+    showToast('生成失败: '+e.message);
+  }finally{
+    isGenerating=false;
+    imgGenBtn.disabled=false;
+    imgGenBtn.textContent='生成图片';
+    requestAnimationFrame(()=>applyRoughBorder(imgCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#F0E8D8',fillStyle:'solid',seed:1001}));
+  }
+}
+
+async function handleVideoGen(){
+  const prompt = vidPrompt.value.trim();
+  if(!prompt){showToast('请输入描述文字');return}
+  if(isGenerating) return;
+  isGenerating=true;
+
+  vidGenBtn.disabled=true;
+  vidGenBtn.textContent='生成中 ...';
+  vidResult.classList.remove('show');
+  vidResultContent.innerHTML='';
+  vidResultLabel.textContent='';
+  vidResultActions.style.display='none';
+  progressArea.classList.add('show');
+  progressStatus.textContent='正在提交任务 ...';
+  drawProgress(0.05);
+
+  try{
+    const numFrames = parseInt(vidDuration.value);
+    const frameRate = parseInt(vidFps.value);
+    const [w, h] = vidSize.value.split('x').map(Number);
+    const imageUrl = vidImageUrl.value.trim();
+    const taskId = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
+    progressStatus.textContent='AI 绘制中 ...';
+    drawProgress(0.12);
+
+    let attempts=0, maxAttempts=180, done=false, resultUrl=null;
+    while(!done && attempts<maxAttempts){
+      await new Promise(r=>setTimeout(r,5000));
+      attempts++;
+      const st = await pollVideoStatus(taskId);
+      const status = (st.status||'').toLowerCase();
+      const p = st.progress || (attempts/maxAttempts);
+      drawProgress(Math.min(0.92, 0.12 + p*0.8));
+
+      if(status==='completed'){
+        resultUrl = st.videoUrl || st.remixed_from_video_id || st.video_url || st.url;
+        done=true; break;
+      } else if(status==='failed'){
+        throw new Error(st.error||'视频生成失败');
       }
     }
+    if(!done) throw new Error('生成超时，请稍后重试');
+    if(!resultUrl) throw new Error('没有返回视频');
 
-    setProgress(60);
-    const data = await apiPost('/api/images/generations', body);
-    const imageUrl = data.imageUrl;
-
-    if (!imageUrl) throw new Error('未获取到图片 URL');
-
-    setProgress(100);
-    setStatus('<span class="status-badge status-completed">✅ 完成</span>');
-    setContent(`
-      <img src="${imageUrl}" alt="${prompt}">
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="downloadMedia('${imageUrl}','image')">⬇ 下载图片</button>
-        <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${imageUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
-      </div>
-    `);
-    addToGallery('image', imageUrl, prompt);
-    toast('🎉 图片生成成功！');
-
-  } catch (err) {
-    setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${err.message}</div>`);
-    setStatus('<span class="status-badge status-failed">失败</span>');
-    toast('生成失败: ' + err.message, true);
-  } finally {
-    STATE.generating = false;
-    btn.disabled = false;
-    btn.innerHTML = '✨ 生成图片';
+    const vid = document.createElement('video');
+    vid.src=resultUrl; vid.controls=true; vid.muted=true; vid.playsInline=true; vid.preload='metadata';
+    vidResultContent.appendChild(vid);
+    vidResultLabel.textContent='"'+prompt.slice(0,60)+(prompt.length>60?'...':'')+'"';
+    vidResultActions.innerHTML = buildResultActions(resultUrl, 'video');
+    vidResultActions.style.display = 'flex';
+    vidResult.classList.add('show');
+    addToGallery({type:'video',url:resultUrl,prompt});
+    showToast('视频生成成功!');
+    drawProgress(1);
+    progressStatus.textContent='完成!';
+  }catch(e){
+    showToast('生成失败: '+e.message);
+    progressStatus.textContent='出错了，请重试';
+  }finally{
+    isGenerating=false;
+    vidGenBtn.disabled=false;
+    vidGenBtn.textContent='生成视频';
+    requestAnimationFrame(()=>applyRoughBorder(vidCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#E8EEF5',fillStyle:'solid',seed:1002}));
   }
-});
-
-// ============================================================
-// Generate Video
-// ============================================================
-document.getElementById('btn-generate-video').addEventListener('click', async () => {
-  if (STATE.generating) return;
-  const prompt = document.getElementById('vid-prompt').value.trim();
-  if (!prompt) { toast('请输入视频描述', true); return; }
-
-  STATE.generating = true;
-  const btn = document.getElementById('btn-generate-video');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> 创建任务...';
-  showResult('🎬 视频生成中...');
-  setStatus('<span class="status-badge status-queued">排队中</span>');
-  setProgress(5);
-
-  try {
-    const [w, h] = document.getElementById('vid-size').value.split('x').map(Number);
-    const body = {
-      model: 'agnes-video-v2.0',
-      prompt,
-      width: w,
-      height: h,
-      num_frames: parseInt(document.getElementById('vid-duration').value),
-      frame_rate: parseInt(document.getElementById('vid-fps').value),
-    };
-
-    const imgUrl = document.getElementById('vid-image-url').value.trim();
-    if (imgUrl) body.image = imgUrl;
-
-    // Create task
-    const createData = await apiPost('/api/videos', body);
-    const taskId = createData.taskId;
-    if (!taskId) throw new Error('未获取到任务 ID');
-
-    setProgress(8);
-    btn.innerHTML = '<span class="spinner"></span> 正在生成视频...';
-    setStatus(`<span class="status-badge status-in_progress">生成中</span> <span style="font-size:11px;color:var(--text-dim);margin-left:6px">${taskId}</span>`);
-
-    // Poll until done
-    pollVideoTask(taskId, btn, prompt, 0);
-
-  } catch (err) {
-    setContent(`<div style="color:var(--red);padding:20px">❌ 创建失败：${err.message}</div>`);
-    setStatus('<span class="status-badge status-failed">失败</span>');
-    toast('创建失败: ' + err.message, true);
-    STATE.generating = false;
-    btn.disabled = false;
-    btn.innerHTML = '🎬 生成视频';
-  }
-});
-
-async function pollVideoTask(taskId, btn, prompt, attempt) {
-  const MAX_ATTEMPTS = 180; // ~15 min at 5s intervals
-  if (attempt >= MAX_ATTEMPTS) {
-    setContent('<div style="color:var(--red);padding:20px">⏰ 超时：视频生成超过 15 分钟，请稍后重试</div>');
-    setStatus('<span class="status-badge status-failed">超时</span>');
-    toast('视频生成超时', true);
-    STATE.generating = false;
-    btn.disabled = false;
-    btn.innerHTML = '🎬 生成视频';
-    return;
-  }
-
-  STATE.pollTimer = setTimeout(async () => {
-    try {
-      const data = await apiGet(`/api/videos/${taskId}`);
-
-      // Update progress (estimate if 0)
-      const progress = data.progress > 0 ? data.progress : Math.min(95, 8 + attempt * 2);
-      setProgress(progress);
-
-      // Update status badge
-      const statusMap = {
-        queued: '<span class="status-badge status-queued">排队中</span>',
-        in_progress: '<span class="status-badge status-in_progress">生成中</span>',
-        completed: '<span class="status-badge status-completed">✅ 完成</span>',
-        failed: '<span class="status-badge status-failed">失败</span>',
-      };
-      setStatus(statusMap[data.status] || data.status);
-
-      if (data.status === 'completed' && data.videoUrl) {
-        setProgress(100);
-        setContent(`
-          <video src="${data.videoUrl}" controls autoplay loop></video>
-          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-sm" onclick="downloadMedia('${data.videoUrl}','video')">⬇ 下载视频</button>
-            <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${data.videoUrl}').then(()=>toast('链接已复制'))">📋 复制链接</button>
-          </div>
-        `);
-        addToGallery('video', data.videoUrl, prompt);
-        toast('🎉 视频生成成功！');
-        STATE.generating = false;
-        btn.disabled = false;
-        btn.innerHTML = '🎬 生成视频';
-        return;
-      }
-
-      if (data.status === 'failed') {
-        setContent(`<div style="color:var(--red);padding:20px">❌ 生成失败：${data.error || '未知错误'}</div>`);
-        setStatus('<span class="status-badge status-failed">失败</span>');
-        toast('视频生成失败', true);
-        STATE.generating = false;
-        btn.disabled = false;
-        btn.innerHTML = '🎬 生成视频';
-        return;
-      }
-
-      // Continue polling
-      pollVideoTask(taskId, btn, prompt, attempt + 1);
-
-    } catch (err) {
-      setContent(`<div style="color:var(--red);padding:20px">❌ 查询状态失败：${err.message}</div>`);
-      toast('查询失败: ' + err.message, true);
-      STATE.generating = false;
-      btn.disabled = false;
-      btn.innerHTML = '🎬 生成视频';
-    }
-  }, 5000); // poll every 5 seconds
 }
 
-// ============================================================
-// Keyboard shortcut: Cmd/Ctrl+Enter to generate
-// ============================================================
-document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-    e.preventDefault();
-    if (STATE.mode === 'image') {
-      document.getElementById('btn-generate-image').click();
-    } else {
-      document.getElementById('btn-generate-video').click();
-    }
+/* ===================== CARD ROTATIONS ===================== */
+function applyCardRotations(){
+  document.querySelectorAll('.sticky-card').forEach((card,i)=>{
+    const r = CARD_ROTATIONS[i % CARD_ROTATIONS.length] + rand(-0.3,0.3);
+    card.style.transform = `rotate(${r}deg)`;
+  });
+}
+
+/* ===================== DECORATIVE ELEMENTS ===================== */
+function drawPageDecorations(){
+  document.querySelectorAll('.btn-wrap .deco-svg.star-right').forEach(svg=>{
+    if(!svg) return;
+    svg.innerHTML='';
+    drawStar(svg, 12, 12, 10, {stroke:'#E8850C', strokeWidth:2.5, roughness:2.5, fill:'rgba(232,133,12,0.25)', fillStyle:'solid', seed:9001});
+  });
+
+  const arrowSvg = document.querySelector('.sticky-card label .deco-svg');
+  if(arrowSvg){
+    arrowSvg.innerHTML='';
+    drawArrow(arrowSvg, {x1:20,y1:18,x2:4,y2:2, stroke:'var(--amber)', strokeWidth:2.5, seed:9002});
   }
+
+  if(galleryDeco){
+    galleryDeco.innerHTML='';
+    const rc = rough.svg(galleryDeco);
+    galleryDeco.appendChild(rc.rectangle(1,1,16,16,{stroke:'rgba(123,120,117,0.35)', strokeWidth:2, roughness:2.5, fill:'transparent', seed:9003}));
+    galleryDeco.appendChild(rc.path('M3 14 L7 7 L11 11 L15 5',{stroke:'rgba(123,120,117,0.25)', strokeWidth:1.5, roughness:2, fill:'transparent', seed:9004}));
+  }
+}
+
+/* ===================== INITIALIZE ALL ===================== */
+function redrawAll(){
+  applyRoughBorder(imgCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#F0E8D8',fillStyle:'solid',seed:1001});
+  applyRoughBorder(vidCard,{stroke:'#8B8680',strokeWidth:3,roughness:2.8,fill:'#E8EEF5',fillStyle:'solid',seed:1002});
+  drawRoughButton(imgBtnSvg,{seed:3001,fill:'var(--amber)'});
+  drawRoughButton(vidBtnSvg,{seed:3002,fill:'var(--amber)'});
+  drawLamp();
+  updateTabUnderline(currentTab);
+  applyCardRotations();
+  drawPageDecorations();
+  if(footerSmiley){footerSmiley.innerHTML='';drawSmiley(footerSmiley,{seed:8008})}
+}
+
+/* ===================== EVENT LISTENERS ===================== */
+document.addEventListener('DOMContentLoaded',()=>{
+  tabBtns.forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+  imgGenBtn.addEventListener('click',handleImageGen);
+  vidGenBtn.addEventListener('click',handleVideoGen);
+  imgPrompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleImageGen()}});
+  vidPrompt.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();handleVideoGen()}});
+  imgModel.addEventListener('change',()=>{
+    imgRefGroup.style.display = imgModel.value==='agnes-image-2.0-flash' ? 'block' : 'none';
+  });
+
+  requestAnimationFrame(()=>{redrawAll();renderGallery()});
+
+  let resizeTimer;
+  window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(redrawAll,350)});
+
+  // Cmd/Ctrl+Enter shortcut
+  document.addEventListener('keydown',e=>{
+    if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){
+      e.preventDefault();
+      if(currentTab==='image') handleImageGen();
+      else handleVideoGen();
+    }
+  });
 });
 
-// ============================================================
-// Init
-// ============================================================
-console.log('🎨 AI 创作平台已就绪');
-console.log('💡 提示: Cmd/Ctrl + Enter 快速生成');
-console.log('📦 画廊作品:', STATE.gallery.length);
+})();
 </script>
 </body>
 </html>
