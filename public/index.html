@@ -1036,10 +1036,11 @@ async function generateVideo(prompt, numFrames, frameRate, width, height, imageU
   };
   if(imageUrl) body.image = imageUrl;
   const data = await apiFetch('/videos',{method:'POST',body:JSON.stringify(body)});
-  // proxy wraps: {success, taskId}
+  // proxy wraps: {success, taskId, raw:{seconds}}
   const taskId = data.taskId || data.id || data.task_id;
   if(!taskId) throw new Error('无法获取任务 ID');
-  return taskId;
+  const estSeconds = parseFloat(data.raw?.seconds) || (numFrames / frameRate);
+  return {taskId, estSeconds};
 }
 
 async function pollVideoStatus(taskId){
@@ -1113,18 +1114,30 @@ async function handleVideoGen(){
     const frameRate = parseInt(vidFps.value);
     const [w, h] = vidSize.value.split('x').map(Number);
     const imageUrl = vidImageUrl.value.trim();
-    const taskId = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
-    progressStatus.textContent='AI 绘制中 ...';
-    drawProgress(0.12);
+    const {taskId, estSeconds} = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
+    const estMs = estSeconds * 1000;
+    const startTime = Date.now();
+    progressStatus.textContent = 'AI 绘制中（预计 ' + Math.ceil(estSeconds) + ' 秒）...';
+    drawProgress(0.08);
 
-    let attempts=0, maxAttempts=180, done=false, resultUrl=null;
+    let attempts=0, maxAttempts=Math.max(60, Math.ceil(estSeconds*3)), done=false, resultUrl=null;
     while(!done && attempts<maxAttempts){
-      await new Promise(r=>setTimeout(r,5000));
+      await new Promise(r=>setTimeout(r,3000));
       attempts++;
+      const elapsed = Date.now() - startTime;
       const st = await pollVideoStatus(taskId);
       const status = (st.status||'').toLowerCase();
-      const p = st.progress || (attempts/maxAttempts);
-      drawProgress(Math.min(0.92, 0.12 + p*0.8));
+
+      let p;
+      if(st.progress > 0){
+        p = st.progress / 100;
+      } else {
+        p = Math.min(0.92, Math.max(0.08, elapsed / (estMs * 1.5)));
+      }
+      drawProgress(p);
+
+      const remain = Math.max(0, Math.ceil((estMs - elapsed) / 1000));
+      progressStatus.textContent = 'AI 绘制中... 预计剩余 ' + remain + ' 秒';
 
       if(status==='completed'){
         resultUrl = st.videoUrl || st.remixed_from_video_id || st.video_url || st.url;
