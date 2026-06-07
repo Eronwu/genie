@@ -1009,6 +1009,8 @@ function renderGallery(){
     cap.className='caption';
     cap.textContent=item.prompt||'untitled';
     div.appendChild(cap);
+    div.style.cursor='pointer';
+    div.addEventListener('click',()=>previewGalleryItem(item));
     const del = document.createElement('button');
     del.className='del-btn';
     del.textContent='x';
@@ -1023,6 +1025,25 @@ function addToGallery(item){
   if(gallery.length>50) gallery.pop();
   saveGallery();
   renderGallery();
+}
+
+function previewGalleryItem(item){
+  // Show in the image result area
+  switchTab('image');
+  setTimeout(()=>{
+    imgResultContent.innerHTML = item.type==='image'
+      ? `<img src="${escapeHtml(item.url)}" alt="">`
+      : `<video src="${escapeHtml(item.url)}" controls autoplay loop></video>`;
+    imgResultLabel.textContent = (item.prompt||'').slice(0,60);
+    imgResultActions.innerHTML = buildResultActions(item.url, item.type);
+    imgResultActions.style.display = 'flex';
+    imgResult.classList.add('show');
+    imgResult.scrollIntoView({behavior:'smooth',block:'center'});
+  },200);
+}
+
+function escapeHtml(str){
+  const d=document.createElement('div');d.textContent=str||'';return d.innerHTML;
 }
 
 /* ===================== API KEY MODAL ===================== */
@@ -1358,7 +1379,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     imgRefGroup.style.display = imgModel.value==='agnes-image-2.0-flash' ? 'block' : 'none';
   });
 
-  if(!apiKey) checkApiKey();
+  updateKeyBadge();
+  if(!apiKey) showApiModal();
 
   requestAnimationFrame(()=>{redrawAll();renderGallery()});
 
