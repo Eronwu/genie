@@ -1,7 +1,7 @@
 {
-  "name": "aidemo",
+  "name": "genie",
   "version": "1.0.0",
-  "description": "",
+  "description": "🧞 Genie — AI 创作平台，基于 Agnes AI 的图片与视频生成工具",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

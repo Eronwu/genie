@@ -1,6 +1,6 @@
-# 🎨 AI 创作平台
+# 🧞 Genie — AI 创作平台
 
-基于 [Agnes AI](https://platform.agnes-ai.com) 免费 API 的 AI 图片/视频生成平台。支持文生图、图生图、文生视频、图生视频。
+基于 [Agnes AI](https://platform.agnes-ai.com) 免费 API 的 AI 图片/视频生成平台。支持文生图、图生图、文生视频、图生视频。许个愿，Genie 帮你生成。
 
 > ✨ Agnes AI 提供**无限期免费**的多模态 API，无需绑定信用卡。
 
@@ -14,8 +14,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/Eronwu/aidemo.git
-cd aidemo
+git clone https://github.com/Eronwu/genie.git
+cd genie
 
 # 安装依赖
 npm install
@@ -52,7 +52,7 @@ npm start
 ## 📁 项目结构
 
 ```
-aidemo/
+genie/
 ├── server.js           # Express 后端，代理 API 请求
 ├── public/
 │   └── index.html      # 前端界面
