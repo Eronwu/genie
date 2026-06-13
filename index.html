@@ -1152,10 +1152,13 @@ async function apiFetch(path, options={}){
   const headers={...options.headers};
   if(apiKey) headers['Authorization']=`Bearer ${apiKey}`;
   if(!headers['Content-Type'] && options.body) headers['Content-Type']='application/json';
+  console.log('[API]', options.method||'GET', `${API_BASE}${path}`);
   const res = await fetch(`${API_BASE}${path}`, {...options, headers});
+  console.log('[API] status:', res.status, res.statusText);
   if(!res.ok){
     let msg='请求失败';
     try{const e=await res.json();msg=e.error?.message||e.message||msg}catch(e){}
+    console.error('[API] error:', msg);
     throw new Error(msg);
   }
   return res.json();
@@ -1253,15 +1256,17 @@ function startQueuePolling(){
 async function pollQueueTask(t){
   const taskId = t.taskId;
   let attempts = 0, inProgress = false;
+  console.log('[POLL] start polling task:', taskId);
   while(true){
     await new Promise(r=>setTimeout(r,5000));
     attempts++;
     const q = getQueue();
     const item = q.find(x=>x.taskId===taskId);
-    if(!item||item.status==='completed'||item.status==='failed'){delete queuePollers[taskId];renderQueue();return;}
+    if(!item||item.status==='completed'||item.status==='failed'){console.log('[POLL] task removed/completed, stop:', taskId);delete queuePollers[taskId];renderQueue();return;}
     try{
       const st = await pollVideoStatus(taskId);
       const status = (st.status||'').toLowerCase();
+      console.log('[POLL] attempt', attempts, 'status:', status, 'progress:', st.progress);
       const elapsed = Date.now() - item.startTime;
       if(status==='completed'){
         const url = st.remixed_from_video_id||st.video_url||st.url;
@@ -1309,7 +1314,7 @@ async function pollQueueTask(t){
         drawProgress(p);
       }
       renderQueue();
-    }catch(e){/* retry next poll */}
+    }catch(e){console.error('[POLL] error:', e.message);/* retry next poll */}
   }
 }
 
@@ -1423,13 +1428,16 @@ async function handleVideoGen(){
     const frameRate = parseInt(vidFps.value);
     const [w, h] = vidSize.value.split('x').map(Number);
     const imageUrl = vidImageUrl.value.trim();
+    console.log('[VIDEO] generating:', {prompt, numFrames, frameRate, w, h, imageUrl});
     const {taskId, estSeconds, vidSecs} = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
+    console.log('[VIDEO] task created:', taskId);
     const estMs = estSeconds * 1000;
     const startTime = Date.now();
     currentTaskId = taskId;
 
     // Add to queue (persists across refreshes, supports multiple concurrent tasks)
     addToQueue({taskId, prompt, estMs, startTime, vidSecs, status:'queued'});
+    console.log('[VIDEO] queue:', getQueue());
     startQueuePolling();
     renderQueue();
 
@@ -1437,6 +1445,7 @@ async function handleVideoGen(){
     drawProgress(0.03);
 
   }catch(e){
+    console.error('[VIDEO] error:', e.message);
     showToast('生成失败: '+e.message);
     progressStatus.textContent='出错了，请重试';
   }finally{
