@@ -1155,6 +1155,8 @@ async function apiFetch(path, options={}){
   console.log('[API]', options.method||'GET', `${API_BASE}${path}`);
   const res = await fetch(`${API_BASE}${path}`, {...options, headers});
   console.log('[API] status:', res.status, res.statusText);
+  const clone = res.clone();
+  clone.json().then(d=>console.log('[API] body:', JSON.stringify(d).slice(0,200))).catch(()=>{});
   if(!res.ok){
     let msg='请求失败';
     try{const e=await res.json();msg=e.error?.message||e.message||msg}catch(e){}
@@ -1194,7 +1196,7 @@ async function generateVideo(prompt, numFrames, frameRate, width, height, imageU
 }
 
 async function pollVideoStatus(taskId){
-  return apiFetch(`/videos/${taskId}`);
+  return apiFetch(`/videos/${taskId}?_t=${Date.now()}`);
 }
 
 /* ===================== PENDING TASK QUEUE ===================== */
