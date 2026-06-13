@@ -1240,6 +1240,7 @@ function renderQueue(){
 
 // Start polling all queued/in_progress tasks
 let queuePollers = {};
+let currentTaskId = null;
 function startQueuePolling(){
   const q = getQueue().filter(t=>t.status==='queued'||t.status==='in_progress');
   q.forEach(t=>{
@@ -1251,27 +1252,61 @@ function startQueuePolling(){
 
 async function pollQueueTask(t){
   const taskId = t.taskId;
+  let attempts = 0, inProgress = false;
   while(true){
-    await new Promise(r=>setTimeout(r,8000));
+    await new Promise(r=>setTimeout(r,5000));
+    attempts++;
     const q = getQueue();
     const item = q.find(x=>x.taskId===taskId);
     if(!item||item.status==='completed'||item.status==='failed'){delete queuePollers[taskId];renderQueue();return;}
     try{
       const st = await pollVideoStatus(taskId);
       const status = (st.status||'').toLowerCase();
+      const elapsed = Date.now() - item.startTime;
       if(status==='completed'){
         const url = st.remixed_from_video_id||st.video_url||st.url;
         if(url){
           updateQueueItem(taskId,{status:'completed',resultUrl:url});
           addToGallery({type:'video',url,prompt:t.prompt,date:new Date().toLocaleString()});
           showToast('🎉 视频生成完成：'+t.prompt.slice(0,20)+'...');
+          if(taskId===currentTaskId){
+            const vid = document.createElement('video');
+            vid.src=url; vid.controls=true; vid.muted=true; vid.playsInline=true; vid.preload='metadata';
+            vidResultContent.appendChild(vid);
+            vidResultLabel.textContent='"'+t.prompt.slice(0,200)+(t.prompt.length>200?'...':'')+'"';
+            vidResultActions.innerHTML = buildResultActions(url, 'video');
+            vidResultActions.style.display = 'flex';
+            vidResult.classList.add('show');
+            drawProgress(1);
+            progressStatus.textContent='完成!';
+          }
         }
         delete queuePollers[taskId];renderQueue();return;
       }else if(status==='failed'){
         updateQueueItem(taskId,{status:'failed',error:st.error||'未知错误'});
+        if(taskId===currentTaskId){
+          showToast('❌ 视频生成失败: '+(st.error||'未知错误'));
+          progressStatus.textContent='生成失败，请重试';
+          drawProgress(0);
+        }
         delete queuePollers[taskId];renderQueue();return;
       }else if(status==='in_progress'){
+        if(!inProgress) inProgress=true;
         updateQueueItem(taskId,{status:'in_progress'});
+      }
+      if(taskId===currentTaskId){
+        let p;
+        if(status==='in_progress'){
+          if(st.progress > 0){ p = st.progress / 100; }
+          else { p = Math.min(0.88, 0.15 + elapsed / (item.estMs * 1.2)); }
+          const remain = Math.max(0, Math.ceil((item.estMs - elapsed) / 1000));
+          progressStatus.textContent = '🎬 生成中... 预计剩余 ' + remain + ' 秒';
+        } else {
+          p = Math.min(0.12, 0.02 + attempts * 0.003);
+          const waited = Math.ceil(elapsed / 1000);
+          progressStatus.textContent = '⏳ 排队中... 已等待 ' + waited + ' 秒（视频生成约需 3~5 分钟）';
+        }
+        drawProgress(p);
       }
       renderQueue();
     }catch(e){/* retry next poll */}
@@ -1279,64 +1314,7 @@ async function pollQueueTask(t){
 }
 
 
-async function pollLoop(taskId, prompt, estMs, startTime){
-  // estMs is total estimated wait (queue + render). Queue usually dominates.
-  // We keep the bar very low during queue, then ramp up once in_progress.
-  const maxAttempts = Math.max(40, Math.ceil(estMs/1000 * 4));
-  let attempts = 0, done = false, resultUrl = null, inProgress = false;
 
-  while(!done && attempts < maxAttempts){
-    await new Promise(r=>setTimeout(r, 5000));
-    attempts++;
-    const elapsed = Date.now() - startTime;
-    const st = await pollVideoStatus(taskId);
-    const status = (st.status||'').toLowerCase();
-
-    let p;
-    if(status==='in_progress'){
-      if(!inProgress){ inProgress=true; }
-      if(st.progress > 0){ p = st.progress / 100; }
-      else { p = Math.min(0.88, 0.15 + elapsed / (estMs * 1.2)); }
-      drawProgress(p);
-      const remain = Math.max(0, Math.ceil((estMs - elapsed) / 1000));
-      progressStatus.textContent = '🎬 生成中... 预计剩余 ' + remain + ' 秒';
-    } else if(status==='queued'){
-      // Keep bar low during queue, slowly creeping up
-      p = Math.min(0.12, 0.02 + attempts * 0.003);
-      drawProgress(p);
-      const waited = Math.ceil(elapsed / 1000);
-      progressStatus.textContent = '⏳ 排队中... 已等待 ' + waited + ' 秒';
-    } else {
-      p = Math.min(0.92, elapsed / (estMs * 1.5));
-      drawProgress(p);
-    }
-
-    if(status==='completed'){
-      resultUrl = st.remixed_from_video_id || st.video_url || st.url;
-      done = true; break;
-    } else if(status==='failed'){
-      throw new Error(st.error||'视频生成失败');
-    }
-  }
-  if(!done) throw new Error('生成超时，请稍后重试');
-  if(!resultUrl) throw new Error('没有返回视频');
-
-  const vid = document.createElement('video');
-  vid.src=resultUrl; vid.controls=true; vid.muted=true; vid.playsInline=true; vid.preload='metadata';
-  vidResultContent.appendChild(vid);
-  vidResultLabel.textContent='"'+prompt.slice(0,200)+(prompt.length>200?'...':'')+'"';
-  vidResultActions.innerHTML = buildResultActions(resultUrl, 'video');
-  vidResultActions.style.display = 'flex';
-  vidResult.classList.add('show');
-  addToGallery({type:'video',url:resultUrl,prompt});
-  showToast('🎉 视频生成成功!');
-  drawProgress(1);
-  progressStatus.textContent='完成!';
-  clearPendingTask();
-  isGenerating = false;
-  vidGenBtn.disabled = false;
-  vidGenBtn.textContent = '生成视频';
-}
 
 /* ===================== HANDLE GENERATION ===================== */
 function buildResultActions(url, type){
@@ -1448,17 +1426,15 @@ async function handleVideoGen(){
     const {taskId, estSeconds, vidSecs} = await generateVideo(prompt, numFrames, frameRate, w, h, imageUrl);
     const estMs = estSeconds * 1000;
     const startTime = Date.now();
+    currentTaskId = taskId;
 
     // Add to queue (persists across refreshes, supports multiple concurrent tasks)
     addToQueue({taskId, prompt, estMs, startTime, vidSecs, status:'queued'});
     startQueuePolling();
     renderQueue();
 
-    progressStatus.textContent = '⏳ 已加入队列（' + Math.round(vidSecs) + 's 视频，预计排队 ' + Math.ceil(estSeconds/60) + ' 分钟）';
+    progressStatus.textContent = '⏳ 任务已提交，排队中... 视频生成约需 3~5 分钟，请耐心等待';
     drawProgress(0.03);
-
-    // Switch to queue view
-    document.getElementById('queueWrap').scrollIntoView({behavior:'smooth',block:'center'});
 
   }catch(e){
     showToast('生成失败: '+e.message);
